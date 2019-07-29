@@ -133,7 +133,6 @@ static void datetime_to_text(const dsc*, dsc*, Callbacks*);
 static void float_to_text(const dsc*, dsc*, Callbacks*);
 static void decimal_float_to_text(const dsc*, dsc*, DecimalStatus, Callbacks*);
 static void integer_to_text(const dsc*, dsc*, Callbacks*);
-static SINT64 hex_to_value(const char*& string, const char* end);
 static void localError(const Firebird::Arg::StatusVector&);
 
 class DummyException {};
@@ -305,7 +304,7 @@ static void decimal_float_to_text(const dsc* from, dsc* to, DecimalStatus decSt,
 		else if (from->dsc_dtype == dtype_dec128)
 			((Decimal128*) from->dsc_address)->toString(decSt, sizeof(temp), temp);
 		else
-			((DecimalFixed*) from->dsc_address)->toString(decSt, from->dsc_scale, sizeof(temp), temp);
+			fb_assert(false);
 	}
 	catch (const Exception& ex)
 	{
@@ -1071,8 +1070,7 @@ SLONG CVT_get_long(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFunc
 		return d128.toInteger(decSt, scale);
 
 	case dtype_dec_fixed:
-		value = ((DecimalFixed*) p)->toInteger(decSt);
-		break;
+		return ((Int128*) p)->toInteger(scale);
 
 	case dtype_real:
 	case dtype_double:
@@ -1121,7 +1119,7 @@ SLONG CVT_get_long(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFunc
 		{
 			USHORT length =
 				CVT_make_string(desc, ttype_ascii, &p, &buffer, sizeof(buffer), decSt, err);
-			scale -= CVT_decompose(p, length, dtype_long, &value, err);
+			scale -= CVT_decompose(p, length, &value, err);
 		}
 		break;
 
@@ -1275,7 +1273,7 @@ double CVT_get_double(const dsc* desc, DecimalStatus decSt, ErrorFunction err, b
 		}
 
 	case dtype_dec_fixed:
-		value = ((DecimalFixed*) desc->dsc_address)->toDouble(decSt);
+		value = ((Int128*) desc->dsc_address)->toDouble();
 		break;
 
 	case dtype_varying:
@@ -1943,6 +1941,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_long:
 		case dtype_int64:
 		case dtype_quad:
+		case dtype_dec_fixed:
 			integer_to_text(from, to, cb);
 			return;
 
@@ -1953,7 +1952,6 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 
 		case dtype_dec64:
 		case dtype_dec128:
-		case dtype_dec_fixed:
 			decimal_float_to_text(from, to, decSt, cb);
 			return;
 
@@ -2083,7 +2081,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		return;
 
 	case dtype_dec_fixed:
-		*((DecimalFixed*) p) = CVT_get_dec_fixed(from, (SSHORT) to->dsc_scale, decSt, cb->err);
+		*((Int128*) p) = CVT_get_dec_fixed(from, (SSHORT) to->dsc_scale, decSt, cb->err);
 		return;
 
 	case dtype_boolean:
@@ -2494,11 +2492,28 @@ double CVT_power_of_ten(const int scale)
 }
 
 
-SSHORT CVT_decompose(const char* string,
-					 USHORT      length,
-					 SSHORT      dtype,
-					 SLONG*      return_value,
-					 ErrorFunction err)
+class RetPtr
+{
+public:
+	virtual ~RetPtr() { }
+
+	enum lb10 {RETVAL_OVERFLOW, RETVAL_POSSIBLE_OVERFLOW, RETVAL_NO_OVERFLOW};
+
+	virtual USHORT maxSize() = 0;
+	virtual void truncate8() = 0;
+	virtual void truncate16() = 0;
+	virtual lb10 compareLimitBy10() = 0;
+	virtual void nextDigit(unsigned digit, unsigned base) = 0;
+	virtual bool isLowerLimit() = 0;
+	virtual void neg() = 0;
+};
+
+static void hex_to_value(const char*& string, const char* end, RetPtr* retValue);
+
+static SSHORT cvt_decompose(const char*	string,
+							USHORT		length,
+							RetPtr*		return_value,
+							ErrorFunction err)
 {
 /**************************************
  *
@@ -2512,15 +2527,6 @@ SSHORT CVT_decompose(const char* string,
  *
  **************************************/
 
-	// For now, this routine does not handle quadwords unless this is
-	// supported by the platform as a native datatype.
-
-	if (dtype == dtype_quad)
-	{
-		fb_assert(false);
-		err(Arg::Gds(isc_badblk));	// internal error
-	}
-
 	dsc errd;
 	MOVE_CLEAR(&errd, sizeof(errd));
 	errd.dsc_dtype = dtype_text;
@@ -2528,14 +2534,9 @@ SSHORT CVT_decompose(const char* string,
 	errd.dsc_length = length;
 	errd.dsc_address = reinterpret_cast<UCHAR*>(const_cast<char*>(string));
 
-	SINT64 value = 0;
 	SSHORT scale = 0;
 	int sign = 0;
 	bool digit_seen = false, fraction = false;
-	const SINT64 lower_limit = (dtype == dtype_long) ? MIN_SLONG : MIN_SINT64;
-	const SINT64 upper_limit = (dtype == dtype_long) ? MAX_SLONG : MAX_SINT64;
-
-	const SINT64 limit_by_10 = upper_limit / 10;	// used to check for overflow
 
 	const char* p = string;
 	const char* end = p + length;
@@ -2561,28 +2562,20 @@ SSHORT CVT_decompose(const char* string,
 		while (q < end && *q == ' ')
 			q++;
 
-		if (q != end || end - p == 0 || end - p > 16)
+		if (q != end || end - p == 0 || end - p > return_value->maxSize())
 			CVT_conversion_error(&errd, err);
 
 		q = p;
-		value = hex_to_value(q, digits_end);
+		hex_to_value(q, digits_end, return_value);
 
 		if (q != digits_end)
 			CVT_conversion_error(&errd, err);
 
 		// 0xFFFFFFFF = -1; 0x0FFFFFFFF = 4294967295
 		if (digits_end - p <= 8)
-			value = (SLONG) value;
-
-		if (dtype == dtype_long)
-		{
-			if (value < LONG_MIN_int64 || value > LONG_MAX_int64)
-				err(Arg::Gds(isc_arith_except) << Arg::Gds(isc_numeric_out_of_range));
-
-			*return_value = (SLONG) value;
-		}
-		else
-			*((SINT64*) return_value) = value;
+			return_value->truncate8();
+		else if (digits_end - p <= 16)
+			return_value->truncate16();
 
 		return 0; // 0 scale for hex literals
 	}
@@ -2598,20 +2591,22 @@ SSHORT CVT_decompose(const char* string,
 			// tricky: the value doesn't always become negative after an
 			// overflow!
 
-			if (value >= limit_by_10)
+			switch(return_value->compareLimitBy10())
 			{
-				// possibility of an overflow
-				if (value > limit_by_10)
+			case RetPtr::RETVAL_OVERFLOW:
+				err(Arg::Gds(isc_arith_except) << Arg::Gds(isc_numeric_out_of_range));
+				break;
+			case RetPtr::RETVAL_POSSIBLE_OVERFLOW:
+				if ((*p > '8' && sign == -1) || (*p > '7' && sign != -1))
 				{
 					err(Arg::Gds(isc_arith_except) << Arg::Gds(isc_numeric_out_of_range));
 				}
-				else if ((*p > '8' && sign == -1) || (*p > '7' && sign != -1))
-				{
-					err(Arg::Gds(isc_arith_except) << Arg::Gds(isc_numeric_out_of_range));
-				}
+				break;
+			default:
+				break;
 			}
 
-			value = value * 10 + *p - '0';
+			return_value->nextDigit(*p - '0', 10);
 			if (fraction)
 				--scale;
 		}
@@ -2645,8 +2640,8 @@ SSHORT CVT_decompose(const char* string,
 	if (!digit_seen)
 		CVT_conversion_error(&errd, err);
 
-	if ((sign == -1) && value != lower_limit)
-		value = -value;
+	if ((sign == -1) && !return_value->isLowerLimit())
+		return_value->neg();
 
 	// If there's still something left, there must be an explicit exponent
 	if (p < end)
@@ -2693,15 +2688,153 @@ SSHORT CVT_decompose(const char* string,
 
 		if (!digit_seen)
 			CVT_conversion_error(&errd, err);
-
 	}
 
-	if (dtype == dtype_long)
-		*return_value = (SLONG) value;
-	else
-		*((SINT64 *) return_value) = value;
-
 	return scale;
+}
+
+
+template <class Traits>
+class RetValue : public RetPtr
+{
+public:
+	RetValue(typename Traits::ValueType* ptr)
+		: return_value(ptr)
+	{
+		value = 0;
+	}
+
+public:
+	USHORT maxSize()
+	{
+		return sizeof(typename Traits::ValueType);
+	}
+
+	void truncate8()
+	{
+		ULONG mask = 0xFFFFFFFF;
+		value &= mask;
+	}
+
+	void truncate16()
+	{
+		FB_UINT64 mask = 0xFFFFFFFFFFFFFFFF;
+		value &= mask;
+	}
+
+	lb10 compareLimitBy10()
+	{
+		if (value > Traits::UPPER_LIMIT / 10)
+			return RETVAL_OVERFLOW;
+		if (value == Traits::UPPER_LIMIT / 10)
+			return RETVAL_POSSIBLE_OVERFLOW;
+		return RETVAL_NO_OVERFLOW;
+	}
+
+	void nextDigit(unsigned digit, unsigned base)
+	{
+		value *= base;
+		value += digit;
+	}
+
+	bool isLowerLimit()
+	{
+		return value == Traits::LOWER_LIMIT;
+	}
+
+	void neg()
+	{
+		value = -value;
+	}
+
+private:
+	typename Traits::ValueType value;
+	typename Traits::ValueType* return_value;
+};
+
+
+class SLONGTraits
+{
+public:
+	typedef SLONG ValueType;
+	static const SLONG UPPER_LIMIT = MAX_SLONG;
+	static const SLONG LOWER_LIMIT = MIN_SLONG;
+};
+
+SSHORT CVT_decompose(const char* str, USHORT len, SLONG* val, ErrorFunction err)
+{
+/**************************************
+ *
+ *      d e c o m p o s e
+ *
+ **************************************
+ *
+ * Functional description
+ *      Decompose a numeric string in mantissa and exponent,
+ *      or if it is in hexadecimal notation.
+ *
+ **************************************/
+
+	RetValue<SLONGTraits> value(val);
+	return cvt_decompose(str, len, &value, err);
+}
+
+
+class SINT64Traits
+{
+public:
+	typedef SINT64 ValueType;
+	static const SINT64 UPPER_LIMIT = MAX_SINT64;
+	static const SINT64 LOWER_LIMIT = MIN_SINT64;
+};
+
+SSHORT CVT_decompose(const char* str, USHORT len, SINT64* val, ErrorFunction err)
+{
+/**************************************
+ *
+ *      d e c o m p o s e
+ *
+ **************************************
+ *
+ * Functional description
+ *      Decompose a numeric string in mantissa and exponent,
+ *      or if it is in hexadecimal notation.
+ *
+ **************************************/
+
+	RetValue<SINT64Traits> value(val);
+	return cvt_decompose(str, len, &value, err);
+}
+
+
+class I128Traits
+{
+public:
+	typedef Int128 ValueType;
+	static const CInt128 UPPER_LIMIT;
+	static const CInt128 LOWER_LIMIT;
+};
+
+const CInt128 I128Traits::UPPER_LIMIT(MAX_Int128);
+const CInt128 I128Traits::LOWER_LIMIT(MIN_Int128);
+
+SSHORT CVT_decompose(const char* str, USHORT len, Int128* val, ErrorFunction err)
+{
+/**************************************
+ *
+ *      d e c o m p o s e
+ *
+ **************************************
+ *
+ * Functional description
+ *      Decompose a numeric string in mantissa and exponent,
+ *      or if it is in hexadecimal notation.
+ *
+ **************************************/
+
+
+	RetValue<I128Traits> value(val);
+	return cvt_decompose(str, len, &value, err);
 }
 
 
@@ -2851,10 +2984,10 @@ Decimal64 CVT_get_dec64(const dsc* desc, DecimalStatus decSt, ErrorFunction err)
 			return *(Decimal64*) p;
 
 		case dtype_dec128:
-			return ((Decimal128Base*) p)->toDecimal64(decSt);
+			return ((Decimal128*) p)->toDecimal64(decSt);
 
 		case dtype_dec_fixed:
-			return d64.set(*((DecimalFixed*) p), decSt, scale);
+			return d64.set(*((Int128*) p), decSt, scale);
 
 		default:
 			fb_assert(false);
@@ -2941,7 +3074,7 @@ Decimal128 CVT_get_dec128(const dsc* desc, DecimalStatus decSt, ErrorFunction er
 			return *(Decimal128*) p;
 
 		case dtype_dec_fixed:
-			return d128.set(*((DecimalFixed*) p), decSt, scale);
+			return d128.set(*((Int128*) p), decSt, scale);
 
 		default:
 			fb_assert(false);
@@ -2961,7 +3094,7 @@ Decimal128 CVT_get_dec128(const dsc* desc, DecimalStatus decSt, ErrorFunction er
 }
 
 
-DecimalFixed CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFunction err)
+Int128 CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFunction err)
 {
 /**************************************
  *
@@ -2974,7 +3107,7 @@ DecimalFixed CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decS
  *
  **************************************/
 	VaryStr<1024> buffer;			// represents unreasonably long decfloat literal in ASCII
-	DecimalFixed dfix;
+	Int128 dfix;
 	Decimal128 tmp;
 
 	// adjust exact numeric values to same scaling
@@ -2988,27 +3121,29 @@ DecimalFixed CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decS
 		switch (desc->dsc_dtype)
 		{
 		case dtype_short:
-			dfix.set(*(SSHORT*) p);
+			dfix.set(*(SSHORT*) p, scale);
 			break;
 
 		case dtype_long:
-			dfix.set(*(SLONG*) p);
+			dfix.set(*(SLONG*) p, scale);
 			break;
 
 		case dtype_quad:
-			dfix.set(CVT_get_int64(desc, 0, decSt, err));
+			dfix.set(CVT_get_int64(desc, 0, decSt, err), scale);
 			break;
 
 		case dtype_int64:
-			dfix.set(*(SINT64*) p);
+			dfix.set(*(SINT64*) p, scale);
 			break;
 
 		case dtype_varying:
 		case dtype_cstring:
 		case dtype_text:
-			CVT_make_null_string(desc, ttype_ascii, &p, &buffer, sizeof(buffer) - 1, decSt, err);
-			dfix.set(buffer.vary_string, scale, decSt);
-			return dfix;	// scale already corrected
+			{
+				USHORT length =
+					CVT_make_string(desc, ttype_ascii, &p, &buffer, sizeof(buffer), decSt, err);
+				scale -= CVT_decompose(p, length, &dfix, err);
+			}
 			break;
 
 		case dtype_blob:
@@ -3022,23 +3157,25 @@ DecimalFixed CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decS
 			break;
 
 		case dtype_real:
-			dfix.set(*((float*) p), scale, decSt);
-			return dfix;	// scale already corrected
+			dfix.set(*((float*) p), scale);
+			break;
 
 		case dtype_double:
-			dfix.set(*((double*) p), scale, decSt);
-			return dfix;	// scale already corrected
+			dfix.set(*((double*) p), scale);
+			break;
 
 		case dtype_dec64:
-			dfix = tmp = *((Decimal64*) p);
+			tmp = *((Decimal64*) p);
+			dfix.set(tmp, scale);
 			break;
 
 		case dtype_dec128:
-			dfix = *((Decimal128*) p);
+			dfix.set(*((Decimal128*) p), scale);
 			break;
 
 		case dtype_dec_fixed:
-			dfix = *((DecimalFixed*) p);
+			dfix = *((Int128*) p);
+			dfix.setScale(scale);
 			break;
 
 		default:
@@ -3054,7 +3191,6 @@ DecimalFixed CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decS
 		err(v);
 	}
 
-	dfix.exactInt(decSt, scale);
 	return dfix;
 }
 
@@ -3154,7 +3290,9 @@ SQUAD CVT_get_quad(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFunc
 		{
 			USHORT length =
 				CVT_make_string(desc, ttype_ascii, &p, &buffer, sizeof(buffer), decSt, err);
-			scale -= CVT_decompose(p, length, dtype_quad, &value.gds_quad_high, err);
+			SINT64 i64;
+			scale -= CVT_decompose(p, length, &i64, err);
+			SINT64_to_SQUAD(i64, value);
 		}
 		break;
 
@@ -3247,8 +3385,7 @@ SINT64 CVT_get_int64(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFu
 		}
 
 	case dtype_dec_fixed:
-		value = ((DecimalFixed*) p)->toInt64(decSt);
-		break;
+		return ((Int128*) p)->toInt64(scale);
 
 	case dtype_real:
 	case dtype_double:
@@ -3295,7 +3432,7 @@ SINT64 CVT_get_int64(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFu
 		{
 			USHORT length =
 				CVT_make_string(desc, ttype_ascii, &p, &buffer, sizeof(buffer), decSt, err);
-			scale -= CVT_decompose(p, length, dtype_int64, (SLONG *) & value, err);
+			scale -= CVT_decompose(p, length, &value, err);
 		}
 		break;
 
@@ -3349,7 +3486,7 @@ SINT64 CVT_get_int64(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFu
 }
 
 
-static SINT64 hex_to_value(const char*& string, const char* end)
+static void hex_to_value(const char*& string, const char* end, RetPtr* retValue)
 /*************************************
  *
  *      hex_to_value
@@ -3366,7 +3503,6 @@ static SINT64 hex_to_value(const char*& string, const char* end)
 	// we already know this is a hex string, and there is no prefix.
 	// So, string is something like DEADBEEF.
 
-	SINT64 value = 0;
 	UCHAR byte = 0;
 	int nibble = ((end - string) & 1);
 	char ch;
@@ -3385,7 +3521,7 @@ static SINT64 hex_to_value(const char*& string, const char* end)
 		{
 			byte = (byte << 4) + (UCHAR) c;
 			nibble = 0;
-			value = (value << 8) + byte;
+			retValue->nextDigit(byte, 256);
 		}
 		else
 		{
@@ -3397,8 +3533,6 @@ static SINT64 hex_to_value(const char*& string, const char* end)
 	}
 
 	fb_assert(string <= end);
-
-	return value;
 }
 
 

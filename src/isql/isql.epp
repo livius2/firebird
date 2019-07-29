@@ -320,6 +320,7 @@ IsqlGlobals::IsqlGlobals()
 
 	df16 = Firebird::UtilInterfacePtr()->getDecFloat16(&statusWrapper);
 	df34 = Firebird::UtilInterfacePtr()->getDecFloat34(&statusWrapper);
+	i128 = Firebird::UtilInterfacePtr()->getInt128(&statusWrapper);
 }
 
 // I s q l G l o b a l s : : p r i n t f
@@ -2288,6 +2289,7 @@ static processing_state add_row(TEXT* tabname)
 				double* dvalue;
 				FB_DEC16* d64value;
 				FB_DEC34* d128value;
+				FB_I128* i128value;
 				UCHAR* boolean;
 				ISC_QUAD* blobid;
 				vary* avary;
@@ -2366,6 +2368,20 @@ static processing_state add_row(TEXT* tabname)
 					break;
 
 				case SQL_DEC_FIXED:
+					scale = msg->getScale(fbStatus, i);
+					if (ISQL_errmsg(fbStatus))
+						return (SKIP);
+
+					i128value = (FB_I128*) datap;
+					if (isqlGlob.i128)
+						isqlGlob.i128->fromString(fbStatus, scale, lastInputLine, i128value);
+					if ((!isqlGlob.i128) || (fbStatus->getState() & Firebird::IStatus::STATE_ERRORS))
+					{
+						STDERROUT("Input parsing problem");
+						done = true;
+					}
+					break;
+
 				case SQL_DEC34:
 					d128value = (FB_DEC34*) datap;
 					if (isqlGlob.df34)
@@ -3068,6 +3084,7 @@ static processing_state bulk_insert_hack(const char* command)
 				tm times;
 				FB_DEC16* d64value;
 				FB_DEC34* d128value;
+				FB_I128* i128value;
 				// Initialize the time structure.
 				memset(&times, 0, sizeof(times));
 				char msec_str[5] = "";
@@ -3139,11 +3156,28 @@ static processing_state bulk_insert_hack(const char* command)
 					break;
 
 				case SQL_DEC34:
-				case SQL_DEC_FIXED:
 					d128value = (FB_DEC34*) datap;
 					if (isqlGlob.df34)
 						isqlGlob.df34->fromString(fbStatus, get_numeric_value(lastPos).c_str(), d128value);
 					if ((!isqlGlob.df34) || (fbStatus->getState() & Firebird::IStatus::STATE_ERRORS))
+					{
+						STDERROUT("Input parsing problem");
+						done = true;
+					}
+					break;
+
+				case SQL_DEC_FIXED:
+					scale = message->getScale(fbStatus, i);
+					if (ISQL_errmsg(fbStatus))
+						return (SKIP);
+
+					i128value = (FB_I128*) datap;
+					if (isqlGlob.i128)
+					{
+						isqlGlob.i128->fromString(fbStatus, scale,
+							get_numeric_value(lastPos).c_str(), i128value);
+					}
+					if ((!isqlGlob.i128) || (fbStatus->getState() & Firebird::IStatus::STATE_ERRORS))
 					{
 						STDERROUT("Input parsing problem");
 						done = true;
@@ -7312,7 +7346,6 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 			break;
 
 		case SQL_DEC34:
-		case SQL_DEC_FIXED:
 			{
 				char decStr[Firebird::IDecFloat34::STRING_SIZE];
 				if (isqlGlob.df34)
@@ -7325,9 +7358,34 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 					strcpy(decStr, convErr);
 
 				if (setValues.List)
-					isqlGlob.printf("%*.*s%s", sizeof(decStr) - 1, sizeof(decStr) - 1, decStr, NEWLINE);
+				{
+					isqlGlob.printf("%*.*s%s", int(sizeof(decStr) - 1), int(sizeof(decStr) - 1),
+						decStr, NEWLINE);
+				}
 				else
-					sprintf(p, "%*.*s ", sizeof(decStr) - 1, sizeof(decStr) - 1, decStr);
+					sprintf(p, "%*.*s ", int(sizeof(decStr) - 1), int(sizeof(decStr) - 1), decStr);
+			}
+			break;
+
+		case SQL_DEC_FIXED:
+			{
+				char intStr[Firebird::IInt128::STRING_SIZE];
+				if (isqlGlob.i128)
+				{
+					isqlGlob.i128->toString(fbStatus, var->value.asInt128, dscale, sizeof(intStr), intStr);
+					if (ISQL_errmsg(fbStatus))
+						strcpy(intStr, convErr);
+				}
+				else
+					strcpy(intStr, convErr);
+
+				if (setValues.List)
+				{
+					isqlGlob.printf("%*.*s%s", int(sizeof(intStr) - 1), int(sizeof(intStr) - 1),
+						intStr, NEWLINE);
+				}
+				else
+					sprintf(p, "%*.*s ", int(sizeof(intStr) - 1), int(sizeof(intStr) - 1), intStr);
 			}
 			break;
 

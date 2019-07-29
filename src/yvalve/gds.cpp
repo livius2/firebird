@@ -60,6 +60,7 @@
 #include "../common/classes/TempFile.h"
 #include "../common/utils_proto.h"
 #include "../common/ThreadStart.h"
+#include "../common/Int128.h"
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -3036,7 +3037,7 @@ static int blr_print_dtype(gds_ctl* control)
 
 	case blr_dec_fixed:
 		string = "dec_fixed";
-		length = sizeof(Firebird::DecimalFixed);
+		length = sizeof(Firebird::Int128);
 		break;
 
 	case blr_domain_name:

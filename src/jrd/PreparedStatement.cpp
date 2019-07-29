@@ -112,7 +112,7 @@ namespace
 			case dtype_dec_fixed:
 				item.type = SQL_DEC_FIXED;
 				item.scale = desc->dsc_scale;
-				item.length = sizeof(DecimalFixed);
+				item.length = sizeof(Int128);
 				break;
 
 			case dtype_sql_date:

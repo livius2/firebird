@@ -32,6 +32,7 @@
 #include "../jrd/ods.h"
 #include "../intl/charsets.h"
 #include "../common/DecFloat.h"
+#include "../common/Int128.h"
 
 // Data type information
 

@@ -417,6 +417,7 @@ public:
 	USHORT att_charset;
 	Firebird::IDecFloat16* df16;
 	Firebird::IDecFloat34* df34;
+	Firebird::IInt128* i128;
 	void printf(const char* buffer, ...);
 	void prints(const char* buffer);
 
@@ -478,6 +479,7 @@ struct IsqlVar
 		char* asChar;
 		FB_DEC16* asDec16;
 		FB_DEC34* asDec34;
+		FB_I128* asInt128;
 		void* setPtr;
 	};
 	TypeMix value;

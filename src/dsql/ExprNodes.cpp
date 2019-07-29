@@ -569,7 +569,7 @@ unsigned setDecDesc(dsc* desc, const dsc& desc1, const dsc& desc2, Scaling sc, S
 		*nodScale = desc->dsc_scale;
 
 	desc->dsc_length = zipType == DSC_ZTYPE_FLT64 ? sizeof(Decimal64) :
-		zipType == DSC_ZTYPE_FLT128 ? sizeof(Decimal128) : sizeof(DecimalFixed);
+		zipType == DSC_ZTYPE_FLT128 ? sizeof(Decimal128) : sizeof(Int128);
 
 	return zipType == DSC_ZTYPE_FIXED ? ExprNode::FLAG_DECFIXED : ExprNode::FLAG_DECFLOAT;
 }
@@ -1900,23 +1900,6 @@ dsc* ArithmeticNode::add(thread_db* tdbb, const dsc* desc, impure_value* value, 
 		return result;
 	}
 
-	if (node->nodFlags & FLAG_DECFIXED)
-	{
-		const DecimalFixed d1 = MOV_get_dec_fixed(tdbb, desc, node->nodScale);
-		const DecimalFixed d2 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, node->nodScale);
-
-		DecimalStatus decSt = tdbb->getAttachment()->att_dec_status;
-		value->vlu_misc.vlu_dec_fixed = (blrOp == blr_subtract) ? d2.sub(decSt, d1) : d1.add(decSt, d2);
-
-		result->dsc_dtype = dtype_dec_fixed;
-		result->dsc_length = sizeof(DecimalFixed);
-		result->dsc_scale = node->nodScale;
-		result->dsc_sub_type = 0;
-		result->dsc_address = (UCHAR*) &value->vlu_misc.vlu_dec_fixed;
-
-		return result;
-	}
-
 	// Handle floating arithmetic
 
 	if (node->nodFlags & FLAG_DOUBLE)
@@ -1998,14 +1981,13 @@ dsc* ArithmeticNode::add2(thread_db* tdbb, const dsc* desc, impure_value* value,
 
 	if (node->nodFlags & FLAG_DECFIXED)
 	{
-		const DecimalFixed d1 = MOV_get_dec_fixed(tdbb, desc, node->nodScale);
-		const DecimalFixed d2 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, node->nodScale);
+		const Int128 d1 = MOV_get_dec_fixed(tdbb, desc, node->nodScale);
+		const Int128 d2 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, node->nodScale);
 
-		DecimalStatus decSt = tdbb->getAttachment()->att_dec_status;
-		value->vlu_misc.vlu_dec_fixed = (blrOp == blr_subtract) ? d2.sub(decSt, d1) : d1.add(decSt, d2);
+		value->vlu_misc.vlu_dec_fixed = (blrOp == blr_subtract) ? d2.sub(d1) : d1.add(d2);
 
 		result->dsc_dtype = dtype_dec_fixed;
-		result->dsc_length = sizeof(DecimalFixed);
+		result->dsc_length = sizeof(Int128);
 		result->dsc_scale = node->nodScale;
 		result->dsc_sub_type = 0;
 		result->dsc_address = (UCHAR*) &value->vlu_misc.vlu_dec_fixed;
@@ -2101,14 +2083,13 @@ dsc* ArithmeticNode::multiply(const dsc* desc, impure_value* value) const
 
 	if (nodFlags & FLAG_DECFIXED)
 	{
-		const DecimalFixed d1 = MOV_get_dec_fixed(tdbb, desc, nodScale);
-		const DecimalFixed d2 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, nodScale);
+		const Int128 d1 = MOV_get_dec_fixed(tdbb, desc, nodScale);
+		const Int128 d2 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, nodScale);
 
-		DecimalStatus decSt = tdbb->getAttachment()->att_dec_status;
-		value->vlu_misc.vlu_dec_fixed = d1.mul(decSt, d2);
+		value->vlu_misc.vlu_dec_fixed = d1.mul(d2);
 
 		value->vlu_desc.dsc_dtype = dtype_dec_fixed;
-		value->vlu_desc.dsc_length = sizeof(DecimalFixed);
+		value->vlu_desc.dsc_length = sizeof(Int128);
 		value->vlu_desc.dsc_scale = nodScale;
 		value->vlu_desc.dsc_sub_type = 0;
 		value->vlu_desc.dsc_address = (UCHAR*) &value->vlu_misc.vlu_dec_fixed;
@@ -2213,14 +2194,13 @@ dsc* ArithmeticNode::multiply2(const dsc* desc, impure_value* value) const
 	if (nodFlags & FLAG_DECFIXED)
 	{
 		const SSHORT scale = NUMERIC_SCALE(*desc);
-		const DecimalFixed d1 = MOV_get_dec_fixed(tdbb, desc, scale);
-		const DecimalFixed d2 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, nodScale - scale);
+		const Int128 d1 = MOV_get_dec_fixed(tdbb, desc, scale);
+		const Int128 d2 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, nodScale - scale);
 
-		DecimalStatus decSt = tdbb->getAttachment()->att_dec_status;
-		value->vlu_misc.vlu_dec_fixed = d1.mul(decSt, d2);
+		value->vlu_misc.vlu_dec_fixed = d1.mul(d2);
 
 		value->vlu_desc.dsc_dtype = dtype_dec_fixed;
-		value->vlu_desc.dsc_length = sizeof(DecimalFixed);
+		value->vlu_desc.dsc_length = sizeof(Int128);
 		value->vlu_desc.dsc_scale = nodScale;
 		value->vlu_desc.dsc_sub_type = 0;
 		value->vlu_desc.dsc_address = (UCHAR*) &value->vlu_misc.vlu_dec_fixed;
@@ -2327,14 +2307,13 @@ dsc* ArithmeticNode::divide2(const dsc* desc, impure_value* value) const
 	if (nodFlags & FLAG_DECFIXED)
 	{
 		const SSHORT scale = NUMERIC_SCALE(*desc);
-		const DecimalFixed d2 = MOV_get_dec_fixed(tdbb, desc, scale);
-		const DecimalFixed d1 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, nodScale - scale);
+		const Int128 d2 = MOV_get_dec_fixed(tdbb, desc, scale);
+		const Int128 d1 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, nodScale - scale);
 
-		DecimalStatus decSt = tdbb->getAttachment()->att_dec_status;
-		value->vlu_misc.vlu_dec_fixed = d1.div(decSt, d2, scale * 2);
+		value->vlu_misc.vlu_dec_fixed = d1.div(d2, scale * 2);
 
 		value->vlu_desc.dsc_dtype = dtype_dec_fixed;
-		value->vlu_desc.dsc_length = sizeof(DecimalFixed);
+		value->vlu_desc.dsc_length = sizeof(Int128);
 		value->vlu_desc.dsc_scale = nodScale;
 		value->vlu_desc.dsc_sub_type = 0;
 		value->vlu_desc.dsc_address = (UCHAR*) &value->vlu_misc.vlu_dec_fixed;
@@ -7401,6 +7380,7 @@ DmlNode* LiteralNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch* 
 			dtype = CVT_get_numeric(q, l, &scale, p);
 			node->litDesc.dsc_dtype = dtype;
 			node->dsqlStr = FB_NEW_POOL(pool) IntlString(pool, string(q, l));
+			node->litDesc.dsc_scale = (SCHAR) scale;
 
 			switch (dtype)
 			{
@@ -7412,11 +7392,9 @@ DmlNode* LiteralNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch* 
 					break;
 				case dtype_long:
 					node->litDesc.dsc_length = sizeof(SLONG);
-					node->litDesc.dsc_scale = (SCHAR) scale;
 					break;
 				default:
 					node->litDesc.dsc_length = sizeof(SINT64);
-					node->litDesc.dsc_scale = (SCHAR) scale;
 			}
 			break;
 		}
@@ -7852,7 +7830,8 @@ bool LiteralNode::sameAs(CompilerScratch* csb, const ExprNode* other, bool ignor
 
 ValueExprNode* LiteralNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 {
-	if (DTYPE_IS_DECFLOAT(csb->csb_preferredDataType) && dsqlStr)
+	if ((DTYPE_IS_DECFLOAT(csb->csb_preferredDataType) ||
+		 csb->csb_preferredDataType == dtype_dec_fixed) && dsqlStr)
 	{
 		const string& s(dsqlStr->getString());
 		dsc desc;
@@ -7867,13 +7846,21 @@ ValueExprNode* LiteralNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 			break;
 
 		case dtype_dec128:
-		case dtype_dec_fixed:
 			*((Decimal128*) litDesc.dsc_address) = CVT_get_dec128(&desc,
 				tdbb->getAttachment()->att_dec_status, ERR_post);
 			litDesc.dsc_dtype = dtype_dec128;
 			break;
+
+		case dtype_dec_fixed:
+			*((Int128*) litDesc.dsc_address) = CVT_get_dec_fixed(&desc,
+				0, tdbb->getAttachment()->att_dec_status, ERR_post);
+			litDesc.dsc_dtype = dtype_dec_fixed;
+			break;
 		}
 	}
+
+	if (litDesc.dsc_dtype == dtype_double || litDesc.dsc_dtype == dtype_dec128)
+		litDesc.dsc_scale = 0;
 
 	delete dsqlStr;		// Not needed anymore
 	dsqlStr = 0;

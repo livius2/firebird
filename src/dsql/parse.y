@@ -4978,7 +4978,7 @@ prec_scale
 			if ($2 > 18)
 			{
 				$$->dtype = dtype_dec_fixed;
-				$$->length = sizeof(DecimalFixed);
+				$$->length = sizeof(Int128);
 			}
 			else if ($2 > 9)
 			{
@@ -5037,7 +5037,7 @@ prec_scale
 			if ($2 > 18)
 			{
 				$$->dtype = dtype_dec_fixed;
-				$$->length = sizeof(DecimalFixed);
+				$$->length = sizeof(Int128);
 			}
 			else if ($2 > 9)
 			{

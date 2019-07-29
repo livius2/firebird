@@ -450,7 +450,7 @@ void MOV_move(Jrd::thread_db* tdbb, /*const*/ dsc* from, dsc* to)
 }
 
 
-void MOV_move_ext(Jrd::thread_db* tdbb, /*const*/ dsc* from, dsc* to, bool toExtern)
+void MOV_move_ext(Jrd::thread_db* tdbb, /*const*/ dsc* from, dsc* to, bool toExtern)	// !!!!!
 {
 /**************************************
  *
@@ -464,7 +464,7 @@ void MOV_move_ext(Jrd::thread_db* tdbb, /*const*/ dsc* from, dsc* to, bool toExt
  **************************************/
 
 	MOV_move(tdbb, from, to);
-
+/*
 	switch (to->dsc_dtype)
 	{
 	case dtype_dec_fixed:
@@ -475,14 +475,14 @@ void MOV_move_ext(Jrd::thread_db* tdbb, /*const*/ dsc* from, dsc* to, bool toExt
 		}
 		else
 		{
-			((DecimalFixed*) to->dsc_address)->exactInt(tdbb->getAttachment()->att_dec_status,
+			((Int128*) to->dsc_address)->exactInt(tdbb->getAttachment()->att_dec_status,
 				to->dsc_scale);
 		}
 		break;
 
 	default:
 		break;
-	}
+	}*/
 }
 
 
@@ -510,7 +510,7 @@ Decimal128 MOV_get_dec128(Jrd::thread_db* tdbb, const dsc* desc)
 }
 
 
-DecimalFixed MOV_get_dec_fixed(Jrd::thread_db* tdbb, const dsc* desc, SSHORT scale)
+Int128 MOV_get_dec_fixed(Jrd::thread_db* tdbb, const dsc* desc, SSHORT scale)
 {
 /**************************************
  *

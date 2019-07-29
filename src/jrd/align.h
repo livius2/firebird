@@ -33,6 +33,7 @@ Maximum alignments for corresponding data types are defined in dsc.h
 */
 
 #include "../common/DecFloat.h"
+#include "../common/Int128.h"
 #include "firebird/impl/blr.h"
 
 /*  The following macro must be defined as the highest-numericly-valued
@@ -142,7 +143,7 @@ static const USHORT type_lengths[DTYPE_TYPE_MAX] =
 	sizeof(UCHAR),				/* dtype_boolean */
 	sizeof(Firebird::Decimal64),/* dtype_dec64 */
 	sizeof(Firebird::Decimal128),/*dtype_dec128 */
-	sizeof(Firebird::DecimalFixed),	/*	dtype_dec_fixed */
+	sizeof(Firebird::Int128),	/*	dtype_dec_fixed */
 	sizeof(ISC_TIME_TZ),			/* dtype_sql_time_tz */
 	sizeof(ISC_TIMESTAMP_TZ)		/* dtype_timestamp_tz */
 };

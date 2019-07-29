@@ -1269,7 +1269,7 @@ bool DSC_make_descriptor(DSC* desc,
 		break;
 
 	case blr_dec_fixed:
-		desc->dsc_length = sizeof(DecimalFixed);
+		desc->dsc_length = sizeof(Int128);
 		desc->dsc_dtype = dtype_dec_fixed;
 		break;
 
