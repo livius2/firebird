@@ -58,7 +58,7 @@ namespace Firebird {
 Int128 Int128::set(SLONG value, int scale)
 {
 	v = value;
-	setScale(-scale);
+	setScale(scale);
 	return *this;
 }
 
@@ -69,7 +69,7 @@ Int128 Int128::set(SINT64 value, int scale)
 #else
 	v = ttmath::sint(value);
 #endif
-	setScale(-scale);
+	setScale(scale);
 	return *this;
 }
 
@@ -80,15 +80,32 @@ Int128 Int128::set(const char* value)
 	return *this;
 }
 
-Int128 Int128::set(double value, int scale)
+Int128 Int128::set(double value)
 {
-	// to be added
-	v.SetZero();
-	(Arg::Gds(isc_random) << "double").raise();
+	if (value < 0.0)
+		value = -value;
+
+	double parts[4];
+	for (int i = 0; i < 4; ++i)
+	{
+		parts[i] = value;
+		value /= p2_32;
+	}
+	fb_assert(value < 1.0);
+
+	unsigned dwords[4];
+	value = 0.0;
+	for (int i = 4; i--;)
+	{
+		dwords[i] = (parts[i] - value);
+		value += p2_32 * dwords[i];
+	}
+
+	setTable32(dwords);
 	return *this;
 }
 
-Int128 Int128::set(Decimal128 value, int scale)
+Int128 Int128::set(Decimal128 value)
 {
 	// to be added
 	v.SetZero();
@@ -390,6 +407,27 @@ void Int128::getTable32(unsigned* dwords) const
 	}
 }
 
+void Int128::setTable32(const unsigned* dwords)
+{
+	static_assert((sizeof(v.table[0]) == 4) || (sizeof(v.table[0]) == 8),
+		"Unsupported size of integer in ttmath");
+
+	if (sizeof(v.table[0]) == 4)
+	{
+		for (int i = 0; i < 4; ++i)
+			v.table[i] = dwords[i];
+	}
+	else if (sizeof(v.table[0]) == 8)
+	{
+		for (int i = 0; i < 2; ++i)
+		{
+			v.table[i] = dwords[i * 2 + 1];
+			v.table[i] <<= 32;
+			v.table[i] += dwords[i * 2];
+		}
+	}
+}
+
 Int128 Int128::operator&=(FB_UINT64 mask)
 {
 	v.table[0] &= mask;
@@ -460,6 +498,15 @@ void Int128::overflow()
 {
 	(Arg::Gds(isc_arith_except) << Arg::Gds(isc_exception_integer_overflow)).raise();
 }
+
+#ifdef DEV_BUILD
+const char* Int128::show()
+{
+	static char to[64];
+	toString(0, sizeof(to), to);
+	return to;
+}
+#endif
 
 CInt128::CInt128(SINT64 value)
 {

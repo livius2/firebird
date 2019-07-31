@@ -145,28 +145,11 @@ class Decimal128;
 /*
 class Decimal128Base
 {
-	friend class Decimal128;
-	friend class Int128;
-
 public:
-	double toDouble(DecimalStatus decSt) const;
-	Decimal64 toDecimal64(DecimalStatus decSt) const;
-
-	int compare(DecimalStatus decSt, Decimal128Base tgt) const;
-
-	int sign() const;
-
 	void makeKey(ULONG* key) const;
 	void grabKey(ULONG* key);
 	static ULONG getIndexKeyLength();
 	ULONG makeIndexKey(vary* buf);
-
-#ifdef DEV_BUILD
-	int show();
-#endif
-
-private:
-	decQuad dec;
 };
 */
 
@@ -181,14 +164,18 @@ public:
 #endif
 	Int128 set(SLONG value, int scale);
 	Int128 set(SINT64 value, int scale);
-	Int128 set(double value, int scale);
-	Int128 set(Decimal128 value, int scale);
+	Int128 set(double value);
+	Int128 set(Decimal128 value);
 
 	Int128 operator=(SINT64 value)
 	{
 		set(value, 0);
 		return *this;
 	}
+
+#ifdef DEV_BUILD
+	const char* show();
+#endif
 
 	int toInteger(int scale) const;
 	SINT64 toInt64(int scale) const;
@@ -203,6 +190,7 @@ public:
 	Int128 operator+=(unsigned value);
 	Int128 operator*=(unsigned value);
 
+	int compare(Int128 tgt) const;
 	bool operator>(Int128 value) const;
 	bool operator==(Int128 value) const;
 
@@ -215,8 +203,8 @@ public:
 	Int128 mod(Int128 op2) const;
 
 	void getTable32(unsigned* dwords) const;		// internal data in per-32bit form
+	void setTable32(const unsigned* dwords);
 	void setScale(int scale);
-	int compare(Int128 tgt) const;
 
 protected:
 	ttmath::Int<TTMATH_BITS(128)> v;

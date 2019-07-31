@@ -7368,18 +7368,17 @@ DmlNode* LiteralNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch* 
 		case dtype_double:
 		case dtype_dec128:
 		{
-			SSHORT scale;
-			UCHAR dtype;
-
 			// The double literal could potentially be used for any numeric literal - the value is
 			// passed as if it were a text string. Convert the numeric string to its binary value
 			// (int64, long or double as appropriate).
 
 			l = csb->csb_blr_reader.getWord();
 			q = csb->csb_blr_reader.getPos();
-			dtype = CVT_get_numeric(q, l, &scale, p);
+			SSHORT scale = 0;
+			UCHAR dtype = CVT_get_numeric(q, l, &scale, p);
 			node->litDesc.dsc_dtype = dtype;
 			node->dsqlStr = FB_NEW_POOL(pool) IntlString(pool, string(q, l));
+			printf("LiteralNode::parse scale %d type %d\n", scale, dtype);
 			node->litDesc.dsc_scale = (SCHAR) scale;
 
 			switch (dtype)
@@ -7855,6 +7854,7 @@ ValueExprNode* LiteralNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 			*((Int128*) litDesc.dsc_address) = CVT_get_dec_fixed(&desc,
 				0, tdbb->getAttachment()->att_dec_status, ERR_post);
 			litDesc.dsc_dtype = dtype_dec_fixed;
+			printf("litDesc.dsc_scale %d\n", litDesc.dsc_scale);
 			break;
 		}
 	}

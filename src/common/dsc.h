@@ -71,12 +71,13 @@ inline bool DTYPE_IS_APPROX(UCHAR d)
 
 inline bool DTYPE_IS_DECFLOAT(UCHAR d)
 {
-	return d == dtype_dec128 || d  == dtype_dec64 || d == dtype_dec_fixed;
+	return d == dtype_dec128 || d  == dtype_dec64;
 }
 
 inline bool DTYPE_IS_NUMERIC(UCHAR d)
 {
-	return (d >= dtype_byte && d <= dtype_d_float) || d == dtype_int64 || DTYPE_IS_DECFLOAT(d);
+	return (d >= dtype_byte && d <= dtype_d_float) || d == dtype_int64 ||
+			d == dtype_dec_fixed || DTYPE_IS_DECFLOAT(d);
 }
 
 // Descriptor format
@@ -139,7 +140,8 @@ typedef struct dsc
 
 	bool isExact() const
 	{
-		return dsc_dtype == dtype_int64 || dsc_dtype == dtype_long || dsc_dtype == dtype_short;
+		return dsc_dtype == dtype_dec_fixed || dsc_dtype == dtype_int64 ||
+			   dsc_dtype == dtype_long || dsc_dtype == dtype_short;
 	}
 
 	bool isNumeric() const
@@ -195,7 +197,7 @@ typedef struct dsc
 
 	bool isDecOrInt() const
 	{
-		return isDecFloat() || isDecFixed() || isExact();
+		return isDecFloat() || isExact();
 	}
 
 	bool isApprox() const

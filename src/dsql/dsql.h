@@ -257,7 +257,7 @@ public:
 				break;
 
 			case dtype_dec_fixed:
-				precision = 34;
+				precision = 37;
 				break;
 
 			default:

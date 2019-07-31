@@ -68,7 +68,7 @@ static const USHORT _DSC_convert_to_text_length[DTYPE_TYPE_MAX] =
 	5,							// dtype_boolean
 	23,							// dtype_dec64		1 + 1 + 1 + 1 + 16(34) + 3(4)
 	42,							// dtype_dec128		+-  .   e   +-  coeff  + exp
-	36,							// dtype_dec_fixed	coeff(34) + 1(+-) + 1(.)
+	40,							// dtype_dec_fixed	coeff(38) + 1(+-) + 1(.)
 	14 + TimeZoneUtil::MAX_LEN,	// dtype_sql_time_tz   HH:MM:SS.MMMM +NN:NN
 	25 + TimeZoneUtil::MAX_LEN	// dtype_timestamp_tz  YYYY-MM-DD HH:MM:SS.MMMM +NN:NN
 };
@@ -826,7 +826,7 @@ const BYTE DSC_multiply_result[DTYPE_TYPE_MAX][DTYPE_TYPE_MAX] =
 	 DTYPE_CANNOT, DTYPE_CANNOT, DTYPE_CANNOT, DTYPE_CANNOT,
 	 dtype_int64, dtype_int64, DTYPE_CANNOT, dtype_double,
 	 dtype_double, dtype_d_float, DTYPE_CANNOT, DTYPE_CANNOT,
-	 DTYPE_CANNOT, DTYPE_CANNOT, DTYPE_CANNOT, dtype_int64,
+	 DTYPE_CANNOT, DTYPE_CANNOT, DTYPE_CANNOT, dtype_dec_fixed,
 	 DTYPE_CANNOT, DTYPE_CANNOT, dtype_dec128, dtype_dec128,
 	 dtype_dec_fixed, DTYPE_CANNOT, DTYPE_CANNOT},
 

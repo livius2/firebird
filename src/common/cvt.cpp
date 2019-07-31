@@ -2704,7 +2704,11 @@ public:
 		value = 0;
 	}
 
-public:
+	~RetValue()
+	{
+		*return_value = value;
+	}
+
 	USHORT maxSize()
 	{
 		return sizeof(typename Traits::ValueType);
@@ -2814,6 +2818,16 @@ public:
 	static const CInt128 UPPER_LIMIT;
 	static const CInt128 LOWER_LIMIT;
 };
+
+/*
+template <>
+void RetValue<I128Traits>::nextDigit(unsigned digit, unsigned base)
+{
+	printf("Value=%s digit=%d base=%d\n", value.show(), digit, base);
+	value *= base;
+	value += digit;
+}
+*/
 
 const CInt128 I128Traits::UPPER_LIMIT(MAX_Int128);
 const CInt128 I128Traits::LOWER_LIMIT(MIN_Int128);
@@ -3109,6 +3123,9 @@ Int128 CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decSt, Err
 	VaryStr<1024> buffer;			// represents unreasonably long decfloat literal in ASCII
 	Int128 dfix;
 	Decimal128 tmp;
+	double d, eps;
+
+printf("dtype=%d dscale=%d scale=%d ", desc->dsc_dtype, desc->dsc_scale, scale);
 
 	// adjust exact numeric values to same scaling
 	if (DTYPE_IS_EXACT(desc->dsc_dtype))
@@ -3157,20 +3174,70 @@ Int128 CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decSt, Err
 			break;
 
 		case dtype_real:
-			dfix.set(*((float*) p), scale);
-			break;
-
 		case dtype_double:
-			dfix.set(*((double*) p), scale);
+			if (desc->dsc_dtype == dtype_real)
+			{
+				d = *((float*) p);
+				eps = eps_float;
+			}
+			else // if (desc->dsc_dtype == DEFAULT_DOUBLE)
+			{
+				d = *((double*) p);
+				eps = eps_double;
+			}
+
+			if (scale > 0)
+				d /= CVT_power_of_ten(scale);
+			else if (scale < 0)
+				d *= CVT_power_of_ten(-scale);
+
+			if (d > 0)
+				d += 0.5 + eps;
+			else
+				d -= 0.5 + eps;
+
+			/* make sure the cast will succeed
+
+			   Note that adding or subtracting 0.5, as we do in CVT_get_long,
+			   will never allow the rounded value to fit into an Int128,
+			   because when the double value is too large in magnitude
+			   to fit, 0.5 is less than half of the least significant bit
+			   of the significant (sometimes miscalled "mantissa") of the
+			   double, and thus will have no effect on the sum. */
+
+			if (d < I128_MIN_dbl || I128_MAX_dbl < d)
+				err(Arg::Gds(isc_arith_except) << Arg::Gds(isc_numeric_out_of_range));
+
+			dfix.set(d);
 			break;
 
 		case dtype_dec64:
-			tmp = *((Decimal64*) p);
-			dfix.set(tmp, scale);
-			break;
-
 		case dtype_dec128:
-			dfix.set(*((Decimal128*) p), scale);
+			if (desc->dsc_dtype == dtype_dec64)
+				tmp = *((Decimal64*) p);
+			else
+				tmp = *((Decimal128*) p);
+
+			tmp.setScale(scale);
+
+			if (d > 0)
+				tmp += DecFlt_05;
+			else
+				tmp -= DecFlt_05;
+
+			/* make sure the cast will succeed
+
+			   Note that adding or subtracting 0.5, as we do in CVT_get_long,
+			   will never allow the rounded value to fit into an Int128,
+			   because when the double value is too large in magnitude
+			   to fit, 0.5 is less than half of the least significant bit
+			   of the significant (sometimes miscalled "mantissa") of the
+			   double, and thus will have no effect on the sum. */
+
+			if (tmp < I128_MIN_dcft || I128_MAX_dcft < d)
+				err(Arg::Gds(isc_arith_except) << Arg::Gds(isc_numeric_out_of_range));
+
+			dfix.set(tmp);
 			break;
 
 		case dtype_dec_fixed:
@@ -3190,6 +3257,8 @@ Int128 CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decSt, Err
 		Arg::StatusVector v(ex);
 		err(v);
 	}
+
+printf("dfix=%s scale=%d\n", dfix.show(), scale);
 
 	return dfix;
 }
