@@ -501,7 +501,7 @@ AssignmentNode* AssignmentNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 	{ // scope
 		dsc desc;
 		asgnTo->getDesc(tdbb, csb, &desc);
-		AutoSetRestore<UCHAR> dataType(&csb->csb_preferredDataType, desc.dsc_dtype);
+		AutoSetRestore<dsc*> dataType(&csb->csb_preferredDesc, &desc);
 		ExprNode::doPass2(tdbb, csb, asgnFrom.getAddress());
 	}
 	ExprNode::doPass2(tdbb, csb, asgnTo.getAddress());

@@ -3125,7 +3125,13 @@ Int128 CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decSt, Err
 	Decimal128 tmp;
 	double d, eps;
 
-printf("dtype=%d dscale=%d scale=%d ", desc->dsc_dtype, desc->dsc_scale, scale);
+	static const double I128_MIN_dbl = -1.701411834604692e+38;
+	static const double I128_MAX_dbl =  1.701411834604692e+38;
+	static const CDecimal128 I128_MIN_dcft("-1.701411834604692317316873037158841E+38", decSt);
+	static const CDecimal128 I128_MAX_dcft("1.701411834604692317316873037158841E+38", decSt);
+	static const CDecimal128 DecFlt_05("0.5", decSt);
+
+//printf("dtype=%d dscale=%d scale=%d ", desc->dsc_dtype, desc->dsc_scale, scale);
 
 	// adjust exact numeric values to same scaling
 	if (DTYPE_IS_EXACT(desc->dsc_dtype))
@@ -3160,6 +3166,7 @@ printf("dtype=%d dscale=%d scale=%d ", desc->dsc_dtype, desc->dsc_scale, scale);
 				USHORT length =
 					CVT_make_string(desc, ttype_ascii, &p, &buffer, sizeof(buffer), decSt, err);
 				scale -= CVT_decompose(p, length, &dfix, err);
+				dfix.setScale(scale);
 			}
 			break;
 
@@ -3218,13 +3225,13 @@ printf("dtype=%d dscale=%d scale=%d ", desc->dsc_dtype, desc->dsc_scale, scale);
 			else
 				tmp = *((Decimal128*) p);
 
-			tmp.setScale(scale);
-
-			if (d > 0)
-				tmp += DecFlt_05;
+			tmp.setScale(decSt, -scale);
+/*
+			if (tmp.sign() > 0)
+				tmp = tmp.add(decSt, DecFlt_05);
 			else
-				tmp -= DecFlt_05;
-
+				tmp = tmp.add(decSt, DecFlt_05);
+ */
 			/* make sure the cast will succeed
 
 			   Note that adding or subtracting 0.5, as we do in CVT_get_long,
@@ -3234,10 +3241,10 @@ printf("dtype=%d dscale=%d scale=%d ", desc->dsc_dtype, desc->dsc_scale, scale);
 			   of the significant (sometimes miscalled "mantissa") of the
 			   double, and thus will have no effect on the sum. */
 
-			if (tmp < I128_MIN_dcft || I128_MAX_dcft < d)
+			if (tmp.compare(decSt, I128_MIN_dcft) < 0 || I128_MAX_dcft.compare(decSt, tmp) < 0)
 				err(Arg::Gds(isc_arith_except) << Arg::Gds(isc_numeric_out_of_range));
 
-			dfix.set(tmp);
+			dfix.set(decSt, tmp);
 			break;
 
 		case dtype_dec_fixed:
@@ -3258,7 +3265,7 @@ printf("dtype=%d dscale=%d scale=%d ", desc->dsc_dtype, desc->dsc_scale, scale);
 		err(v);
 	}
 
-printf("dfix=%s scale=%d\n", dfix.show(), scale);
+//printf("dfix=%s scale=%d\n", dfix.show(), scale);
 
 	return dfix;
 }

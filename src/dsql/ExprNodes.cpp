@@ -506,17 +506,19 @@ namespace
 const UCHAR DSC_ZTYPE_FLT64 = 0;
 const UCHAR DSC_ZTYPE_FLT128 = 1;
 const UCHAR DSC_ZTYPE_FIXED = 2;
-const UCHAR DSC_ZTYPE_INT = 3;
-const UCHAR DSC_ZTYPE_OTHER = 4;
-const UCHAR DSC_ZTYPE_BAD = 5;
+const UCHAR DSC_ZTYPE_INT64 = 3;
+const UCHAR DSC_ZTYPE_INT = 4;
+const UCHAR DSC_ZTYPE_OTHER = 5;
+const UCHAR DSC_ZTYPE_BAD = 6;
 
-const UCHAR decimalDescTable[5][5] = {
-/*							 DSC_ZTYPE_FLT64	DSC_ZTYPE_FLT128	DSC_ZTYPE_FIXED		DSC_ZTYPE_INT		DSC_ZTYPE_OTHER	*/
-/*	DSC_ZTYPE_FLT64		*/	{DSC_ZTYPE_FLT64,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128},
-/*	DSC_ZTYPE_FLT128	*/	{DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128},
-/*	DSC_ZTYPE_FIXED		*/	{DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FIXED,	DSC_ZTYPE_FIXED,	DSC_ZTYPE_FLT128},
-/*	DSC_ZTYPE_INT		*/	{DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FIXED,	DSC_ZTYPE_BAD,		DSC_ZTYPE_BAD},
-/*	DSC_ZTYPE_OTHER		*/	{DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_BAD,		DSC_ZTYPE_BAD}
+const UCHAR decimalDescTable[6][6] = {
+/*							 DSC_ZTYPE_FLT64	DSC_ZTYPE_FLT128	DSC_ZTYPE_FIXED		DSC_ZTYPE_INT64		DSC_ZTYPE_INT		DSC_ZTYPE_OTHER	*/
+/*	DSC_ZTYPE_FLT64		*/	{DSC_ZTYPE_FLT64,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128},
+/*	DSC_ZTYPE_FLT128	*/	{DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128},
+/*	DSC_ZTYPE_FIXED		*/	{DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FIXED,	DSC_ZTYPE_FIXED,	DSC_ZTYPE_FIXED,	DSC_ZTYPE_FLT128},
+/*	DSC_ZTYPE_INT64		*/	{DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FIXED,	DSC_ZTYPE_FIXED,	DSC_ZTYPE_BAD,		DSC_ZTYPE_BAD},
+/*	DSC_ZTYPE_INT		*/	{DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FIXED,	DSC_ZTYPE_BAD,		DSC_ZTYPE_BAD,		DSC_ZTYPE_BAD},
+/*	DSC_ZTYPE_OTHER		*/	{DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_FLT128,	DSC_ZTYPE_BAD,		DSC_ZTYPE_BAD,		DSC_ZTYPE_BAD}
 };
 
 UCHAR getFType(const dsc& desc)
@@ -529,6 +531,8 @@ UCHAR getFType(const dsc& desc)
 		return DSC_ZTYPE_FLT128;
 	case dtype_dec_fixed:
 		return DSC_ZTYPE_FIXED;
+	case dtype_int64:
+		return DSC_ZTYPE_INT64;
 	}
 
 	if (DTYPE_IS_EXACT(desc.dsc_dtype))
@@ -7378,7 +7382,7 @@ DmlNode* LiteralNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch* 
 			UCHAR dtype = CVT_get_numeric(q, l, &scale, p);
 			node->litDesc.dsc_dtype = dtype;
 			node->dsqlStr = FB_NEW_POOL(pool) IntlString(pool, string(q, l));
-			printf("LiteralNode::parse scale %d type %d\n", scale, dtype);
+			//printf("LiteralNode::parse scale %d type %d\n", scale, dtype);
 			node->litDesc.dsc_scale = (SCHAR) scale;
 
 			switch (dtype)
@@ -7829,38 +7833,40 @@ bool LiteralNode::sameAs(CompilerScratch* csb, const ExprNode* other, bool ignor
 
 ValueExprNode* LiteralNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 {
-	if ((DTYPE_IS_DECFLOAT(csb->csb_preferredDataType) ||
-		 csb->csb_preferredDataType == dtype_dec_fixed) && dsqlStr)
+	if (csb->csb_preferredDesc && ((DTYPE_IS_DECFLOAT(csb->csb_preferredDesc->dsc_dtype) ||
+		 csb->csb_preferredDesc->dsc_dtype == dtype_dec_fixed) && dsqlStr))
 	{
 		const string& s(dsqlStr->getString());
 		dsc desc;
 		desc.makeText(s.length(), CS_ASCII, (UCHAR*) s.c_str());
 
-		switch (csb->csb_preferredDataType)
+		switch (csb->csb_preferredDesc->dsc_dtype)
 		{
 		case dtype_dec64:
 			*((Decimal64*) litDesc.dsc_address) = CVT_get_dec64(&desc,
 				tdbb->getAttachment()->att_dec_status, ERR_post);
 			litDesc.dsc_dtype = dtype_dec64;
+			litDesc.dsc_scale = 0;
 			break;
 
 		case dtype_dec128:
 			*((Decimal128*) litDesc.dsc_address) = CVT_get_dec128(&desc,
 				tdbb->getAttachment()->att_dec_status, ERR_post);
 			litDesc.dsc_dtype = dtype_dec128;
+			litDesc.dsc_scale = 0;
 			break;
 
 		case dtype_dec_fixed:
 			*((Int128*) litDesc.dsc_address) = CVT_get_dec_fixed(&desc,
-				0, tdbb->getAttachment()->att_dec_status, ERR_post);
+				csb->csb_preferredDesc->dsc_scale, tdbb->getAttachment()->att_dec_status, ERR_post);
 			litDesc.dsc_dtype = dtype_dec_fixed;
-			printf("litDesc.dsc_scale %d\n", litDesc.dsc_scale);
+			litDesc.dsc_scale = csb->csb_preferredDesc->dsc_scale;
 			break;
 		}
-	}
+		printf("litDesc.dsc_scale %d csb_preferredDesc->dsc_scale %d\n",
+				litDesc.dsc_scale, csb->csb_preferredDesc->dsc_scale);
 
-	if (litDesc.dsc_dtype == dtype_double || litDesc.dsc_dtype == dtype_dec128)
-		litDesc.dsc_scale = 0;
+	}
 
 	delete dsqlStr;		// Not needed anymore
 	dsqlStr = 0;

@@ -82,8 +82,12 @@ Int128 Int128::set(const char* value)
 
 Int128 Int128::set(double value)
 {
+	bool sgn = false;
 	if (value < 0.0)
+	{
 		value = -value;
+		sgn = true;
+	}
 
 	double parts[4];
 	for (int i = 0; i < 4; ++i)
@@ -102,14 +106,30 @@ Int128 Int128::set(double value)
 	}
 
 	setTable32(dwords);
+	if (sgn)
+		v.ChangeSign();
+
 	return *this;
 }
 
-Int128 Int128::set(Decimal128 value)
+Int128 Int128::set(DecimalStatus decSt, Decimal128 value)
 {
-	// to be added
+	static CDecimal128 quant(1);
+	value = value.quantize(decSt, quant);
+
+	Decimal128::BCD bcd;
+	value.getBcd(&bcd);
+	fb_assert(bcd.exp == 0);
+
 	v.SetZero();
-	(Arg::Gds(isc_random) << "Decimal128").raise();
+	for (unsigned b = 0; b < sizeof(bcd.bcd); ++b)
+	{
+		v.MulInt(10);
+		v.AddInt(bcd.bcd[b]);
+	}
+	if (bcd.sign < 0)
+		v.ChangeSign();
+
 	return *this;
 }
 
@@ -161,34 +181,42 @@ void Int128::toString(int scale, unsigned length, char* to) const
 void Int128::toString(int scale, string& to) const
 {
 	v.ToStringBase(to);
-	if (!scale)
-		return;
-	if (scale < -34 || scale > 4)
+	bool sgn = to[0] == '-';
+	if (sgn)
+		to.erase(0, 1);
+
+	if (scale)
 	{
-		string tmp;
-		tmp.printf("E%d", scale);
-		to += tmp;
-		return;
-	}
-	if (scale > 0)
-	{
-		string tmp(scale, '0');
-		to += tmp;
-		return;
+		if (scale < -34 || scale > 4)
+		{
+			string tmp;
+			tmp.printf("E%d", scale);
+			to += tmp;
+		}
+		else if (scale > 0)
+		{
+			string tmp(scale, '0');
+			to += tmp;
+		}
+		else
+		{
+			unsigned posScale = -scale;
+			if (posScale > to.length())
+			{
+				string tmp(posScale - to.length(), '0');
+				to.insert(0, tmp);
+			}
+			if (posScale == to.length())
+			{
+				to.insert(0, "0.");
+			}
+			else
+				to.insert(to.length() - posScale, ".");
+		}
 	}
 
-	unsigned posScale = -scale;
-	if (posScale > to.length())
-	{
-		string tmp(posScale - to.length(), '0');
-		to.insert(0, tmp);
-	}
-	if (posScale == to.length())
-	{
-		to.insert(0, "0.");
-		return;
-	}
-	to.insert(to.length() - posScale, ".");
+	if (sgn)
+		to.insert(0, "-");
 }
 
 SINT64 Int128::toInt64(int scale) const
@@ -461,10 +489,7 @@ Int128 Int128::operator/(unsigned value) const
 
 Int128 Int128::operator-() const
 {
-	Int128 rc;
-	rc.v = v;
-	rc.neg();
-	return rc;
+	return neg();
 }
 
 Int128 Int128::operator+=(unsigned value)

@@ -1029,4 +1029,9 @@ short Decimal128::decCompare(Decimal128 op2) const
 	return 3;
 }
 
+void Decimal128::getBcd(BCD* bcd) const
+{
+	bcd->sign = decQuadToBCD(&dec, &bcd->exp, bcd->bcd);
+}
+
 } // namespace Firebird

@@ -40,118 +40,10 @@
 #include "../../extern/ttmath/ttmath.h"
 
 namespace Firebird {
-/*
-struct DecFloatConstant
-{
-	const char* name;
-	USHORT val;
-
-	static const DecFloatConstant* getByText(const MetaName& text, const DecFloatConstant* constants, unsigned offset)
-	{
-		NoCaseString name(text.c_str(), text.length());
-
-		for (const DecFloatConstant* dfConst = constants; dfConst->name; ++dfConst)
-		{
-			if (name == &dfConst->name[offset])
-				return dfConst;
-		}
-
-		return nullptr;
-	}
-};
-
-//#define FB_DECLOAT_CONST(x) { STRINGIZE(x), x }
-#define FB_DECLOAT_CONST(x) { #x, x }
-
-const DecFloatConstant FB_DEC_RoundModes[] = {
-	FB_DECLOAT_CONST(DEC_ROUND_CEILING),
-	FB_DECLOAT_CONST(DEC_ROUND_UP),
-	FB_DECLOAT_CONST(DEC_ROUND_HALF_UP),
-	FB_DECLOAT_CONST(DEC_ROUND_HALF_EVEN),
-	FB_DECLOAT_CONST(DEC_ROUND_HALF_DOWN),
-	FB_DECLOAT_CONST(DEC_ROUND_DOWN),
-	FB_DECLOAT_CONST(DEC_ROUND_FLOOR),
-	{ "DEC_ROUND_REROUND", DEC_ROUND_05UP },
-	{ NULL, 0 }
-};
-
-//DEC_ROUND_
-//0123456789
-const unsigned FB_DEC_RMODE_OFFSET = 10;
-
-const DecFloatConstant FB_DEC_IeeeTraps[] = {
-	FB_DECLOAT_CONST(DEC_IEEE_754_Division_by_zero),
-	FB_DECLOAT_CONST(DEC_IEEE_754_Inexact),
-	FB_DECLOAT_CONST(DEC_IEEE_754_Invalid_operation),
-	FB_DECLOAT_CONST(DEC_IEEE_754_Overflow),
-	FB_DECLOAT_CONST(DEC_IEEE_754_Underflow),
-	{ NULL, 0 }
-};
-
-//DEC_IEEE_754_
-//0123456789012
-const unsigned FB_DEC_TRAPS_OFFSET = 13;
-
-#undef FB_DECLOAT_CONST
-
-static const USHORT FB_DEC_Errors =
-	DEC_IEEE_754_Division_by_zero |
-	DEC_IEEE_754_Invalid_operation |
-	DEC_IEEE_754_Overflow;
-
-struct DecimalStatus
-{
-	DecimalStatus(USHORT exc)
-		: decExtFlag(exc),
-		  roundingMode(DEC_ROUND_HALF_UP)
-	{}
-
-	static const DecimalStatus DEFAULT;
-
-	USHORT decExtFlag, roundingMode;
-};
-
-struct DecimalBinding
-{
-	enum Bind
-	{
-		DEC_NATIVE,
-		DEC_TEXT,
-		DEC_DOUBLE,
-		DEC_NUMERIC
-	};
-
-	DecimalBinding()
-		: bind(DEC_NATIVE),
-		  numScale(0)
-	{}
-
-	DecimalBinding(Bind aBind, SCHAR aNumScale = 0)
-		: bind(aBind),
-		  numScale(aNumScale)
-	{}
-
-	static const DecimalBinding DEFAULT;
-	static const SCHAR MAX_SCALE = 18;
-
-	Bind bind;
-	SCHAR numScale;
-};
-*/
 
 class Decimal64;
 class Decimal128;
-
-/*
-class Decimal128Base
-{
-public:
-	void makeKey(ULONG* key) const;
-	void grabKey(ULONG* key);
-	static ULONG getIndexKeyLength();
-	ULONG makeIndexKey(vary* buf);
-};
-*/
+struct DecimalStatus;
 
 class Int128 //: public Decimal128Base
 {
@@ -165,7 +57,7 @@ public:
 	Int128 set(SLONG value, int scale);
 	Int128 set(SINT64 value, int scale);
 	Int128 set(double value);
-	Int128 set(Decimal128 value);
+	Int128 set(DecimalStatus decSt, Decimal128 value);
 
 	Int128 operator=(SINT64 value)
 	{

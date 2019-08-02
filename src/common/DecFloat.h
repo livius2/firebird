@@ -253,6 +253,14 @@ public:
 	int show();
 #endif
 
+	struct BCD
+	{
+		int sign, exp;
+		unsigned char bcd[DECQUAD_Pmax];
+	};
+
+	void getBcd(BCD* bcd) const;
+
 private:
 	decQuad dec;
 };
