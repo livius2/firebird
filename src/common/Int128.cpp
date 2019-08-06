@@ -47,6 +47,7 @@ namespace {
 const CInt128 i64max(MAX_SINT64), i64min(MIN_SINT64);
 const double p2_32 = 4294967296.0;
 const I128limit i128limit;
+const CInt128 minus1(-1);
 
 
 } // anonymous namespace
@@ -296,10 +297,38 @@ Int128 Int128::mul(Int128 op2) const
 
 Int128 Int128::div(Int128 op2, int scale) const
 {
-	Int128 rc(*this);
-	if (rc.v.Div(op2.v))
+	if (compare(MIN_Int128) == 0 && op2.compare(minus1) == 0)
+		Arg::Gds(isc_exception_integer_overflow).raise();
+
+	static const CInt128 MIN_BY10(MIN_Int128 / 10);
+	static const CInt128 MAX_BY10(MAX_Int128 / 10);
+
+	// Scale op1 by as many of the needed powers of 10 as possible without an overflow.
+	CInt128 op1(*this);
+	int sign1 = op1.sign();
+	while ((scale < 0) && (sign1 >= 0 ? op1.compare(MAX_BY10) <= 0 : op1.compare(MIN_BY10) >= 0))
+	{
+		op1 *= 10;
+		++scale;
+	}
+
+	// Scale op2 shifting it to the right as long as only zeroes are thrown away.
+	CInt128 tmp(op2);
+	while (scale < 0)
+	{
+		ttmath::sint rem = 0;
+		tmp.v.DivInt(10, &rem);
+		if (rem)
+			break;
+		op2 = tmp;
+		++scale;
+	}
+
+	if (op1.v.Div(op2.v))
 		zerodivide();
-	return rc;
+
+	op1.setScale(scale);
+	return op1;
 }
 
 Int128 Int128::mod(Int128 op2) const
@@ -311,109 +340,15 @@ Int128 Int128::mod(Int128 op2) const
 	return rc;
 }
 
-/*
-void Int128::makeKey(ULONG* key) const
+int Int128::sign() const
 {
-	unsigned char coeff[DECQUAD_Pmax];
-	int sign = decQuadGetCoefficient(&dec, coeff);
-	int exp = decQuadGetExponent(&dec);
-
-	make(key, DECQUAD_Pmax, DECQUAD_Bias, sizeof(dec), coeff, sign, exp);
+	return v.IsSign() ? -1 : v.IsZero() ? 0 : 1;
 }
 
-void Int128::grabKey(ULONG* key)
+UCHAR* Int128::getBytes()
 {
-	int exp, sign;
-	unsigned char bcd[DECQUAD_Pmax];
-
-	grab(key, DECQUAD_Pmax, DECQUAD_Bias, sizeof(dec), bcd, sign, exp);
-
-	decQuadFromBCD(&dec, exp, bcd, sign);
+	return (UCHAR*)(v.table);
 }
-
-ULONG Int128::getIndexKeyLength()
-{
-	return 17;
-}
-
-ULONG Int128::makeIndexKey(vary* buf)
-{
-	unsigned char coeff[DECQUAD_Pmax + 2];
-	int sign = decQuadGetCoefficient(&dec, coeff);
-	int exp = decQuadGetExponent(&dec);
-	const int bias = DECQUAD_Bias;
-	const unsigned pMax = DECQUAD_Pmax;
-
-	// normalize coeff & exponent
-	unsigned dig = digits(pMax, coeff, exp);
-
-	// exponent bias and sign
-	exp += (bias + 1);
-	if (!dig)
-		exp = 0;
-	if (sign)
-		exp = -exp;
-	exp += 2 * (bias + 1);	// make it positive
-	fb_assert(exp >= 0 && exp < 64 * 1024);
-
-	// encode exp
-	char* k = buf->vary_string;
-	*k++ = exp >> 8;
-	*k++ = exp & 0xff;
-
-	// invert negative
-	unsigned char* const end = &coeff[dig];
-	if (sign && dig)
-	{
-		fb_assert(end[-1]);
-		--end[-1];
-
-		for (unsigned char* p = coeff; p < end; ++p)
-			*p = 9 - *p;
-	}
-
-	// Some 0's in the end - caller, do not forget to reserve additional space on stack
-	end[0] = end[1] = 0;
-
-	// Avoid bad data in k in case when coeff is zero
-	*k = 0;
-
-	// Shifts for moving 10-bit values to bytes buffer
-	struct ShiftTable { UCHAR rshift, lshift; };
-	static ShiftTable table[4] =
-	{
-		{ 2, 6 },
-		{ 4, 4 },
-		{ 6, 2 },
-		{ 8, 0 }
-	};
-
-	// compress coeff - 3 decimal digits (999) per 10 bits (1023)
-	unsigned char* p = coeff;
-	for (ShiftTable* t = table; p < end; p += 3)
-	{
-		USHORT val = p[0] * 100 + p[1] * 10 + p[2];
-		fb_assert(val < 1000);	// 1024, 10 bit
-		*k |= (val >> t->rshift);
-		++k;
-		*k = (val << t->lshift);
-		if (!t->lshift)
-		{
-			++k;
-			*k = 0;
-			t = table;
-		}
-		else
-			++t;
-	}
-	if (*k)
-		++k;
-
-	// done
-	buf->vary_length = k - buf->vary_string;
-	return buf->vary_length;
-}
-*/
 
 void Int128::getTable32(unsigned* dwords) const
 {

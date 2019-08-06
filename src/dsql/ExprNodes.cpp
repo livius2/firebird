@@ -7382,7 +7382,6 @@ DmlNode* LiteralNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch* 
 			UCHAR dtype = CVT_get_numeric(q, l, &scale, p);
 			node->litDesc.dsc_dtype = dtype;
 			node->dsqlStr = FB_NEW_POOL(pool) IntlString(pool, string(q, l));
-			//printf("LiteralNode::parse scale %d type %d\n", scale, dtype);
 			node->litDesc.dsc_scale = (SCHAR) scale;
 
 			switch (dtype)
@@ -7863,9 +7862,6 @@ ValueExprNode* LiteralNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 			litDesc.dsc_scale = csb->csb_preferredDesc->dsc_scale;
 			break;
 		}
-		printf("litDesc.dsc_scale %d csb_preferredDesc->dsc_scale %d\n",
-				litDesc.dsc_scale, csb->csb_preferredDesc->dsc_scale);
-
 	}
 
 	delete dsqlStr;		// Not needed anymore

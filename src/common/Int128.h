@@ -58,6 +58,11 @@ public:
 	Int128 set(SINT64 value, int scale);
 	Int128 set(double value);
 	Int128 set(DecimalStatus decSt, Decimal128 value);
+	Int128 set(Int128 value)
+	{
+		v = value.v;
+		return *this;
+	}
 
 	Int128 operator=(SINT64 value)
 	{
@@ -85,6 +90,7 @@ public:
 	int compare(Int128 tgt) const;
 	bool operator>(Int128 value) const;
 	bool operator==(Int128 value) const;
+	int sign() const;
 
 	Int128 abs() const;
 	Int128 neg() const;
@@ -97,6 +103,7 @@ public:
 	void getTable32(unsigned* dwords) const;		// internal data in per-32bit form
 	void setTable32(const unsigned* dwords);
 	void setScale(int scale);
+	UCHAR* getBytes();
 
 protected:
 	ttmath::Int<TTMATH_BITS(128)> v;
@@ -114,9 +121,9 @@ public:
 
 	CInt128(SINT64 value);
 	CInt128(minmax mm);
-	CInt128(const CInt128& value)
+	CInt128(const Int128& value)
 	{
-		*this = value;
+		set(value);
 	}
 };
 

@@ -2819,16 +2819,6 @@ public:
 	static const CInt128 LOWER_LIMIT;
 };
 
-/*
-template <>
-void RetValue<I128Traits>::nextDigit(unsigned digit, unsigned base)
-{
-	printf("Value=%s digit=%d base=%d\n", value.show(), digit, base);
-	value *= base;
-	value += digit;
-}
-*/
-
 const CInt128 I128Traits::UPPER_LIMIT(MAX_Int128);
 const CInt128 I128Traits::LOWER_LIMIT(MIN_Int128);
 
@@ -3131,8 +3121,6 @@ Int128 CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decSt, Err
 	static const CDecimal128 I128_MAX_dcft("1.701411834604692317316873037158841E+38", decSt);
 	static const CDecimal128 DecFlt_05("0.5", decSt);
 
-//printf("dtype=%d dscale=%d scale=%d ", desc->dsc_dtype, desc->dsc_scale, scale);
-
 	// adjust exact numeric values to same scaling
 	if (DTYPE_IS_EXACT(desc->dsc_dtype))
 		scale -= desc->dsc_scale;
@@ -3226,12 +3214,7 @@ Int128 CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decSt, Err
 				tmp = *((Decimal128*) p);
 
 			tmp.setScale(decSt, -scale);
-/*
-			if (tmp.sign() > 0)
-				tmp = tmp.add(decSt, DecFlt_05);
-			else
-				tmp = tmp.add(decSt, DecFlt_05);
- */
+
 			/* make sure the cast will succeed
 
 			   Note that adding or subtracting 0.5, as we do in CVT_get_long,
@@ -3264,8 +3247,6 @@ Int128 CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decSt, Err
 		Arg::StatusVector v(ex);
 		err(v);
 	}
-
-//printf("dfix=%s scale=%d\n", dfix.show(), scale);
 
 	return dfix;
 }
