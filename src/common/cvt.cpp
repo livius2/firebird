@@ -3175,7 +3175,7 @@ Int128 CVT_get_int128(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorF
 		switch (desc->dsc_dtype)
 		{
 		case dtype_short:
-			dfix.set(int(*(SSHORT*) p), scale);
+			dfix.set(SLONG(*(SSHORT*) p), scale);
 			break;
 
 		case dtype_long:
