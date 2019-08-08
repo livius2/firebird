@@ -406,7 +406,7 @@ Int128 Int128::operator&=(FB_UINT64 mask)
 	return *this;
 }
 
-Int128 Int128::operator&=(unsigned mask)
+Int128 Int128::operator&=(ULONG mask)
 {
 	v.table[0] &= mask;
 
