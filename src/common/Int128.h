@@ -81,7 +81,7 @@ public:
 	double toDouble() const;
 
 	Int128 operator&=(FB_UINT64 mask);
-	Int128 operator&=(unsigned mask);
+	Int128 operator&=(ULONG mask);
 	Int128 operator-() const;
 	Int128 operator/(unsigned value) const;
 	Int128 operator+=(unsigned value);
