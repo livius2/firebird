@@ -85,7 +85,7 @@ struct impure_value
 		double vlu_double;
 		Firebird::Decimal64 vlu_dec64;
 		Firebird::Decimal128 vlu_dec128;
-		Firebird::Int128 vlu_dec_fixed;
+		Firebird::Int128 vlu_int128;
 		GDS_TIMESTAMP vlu_timestamp;
 		ISC_TIMESTAMP_TZ vlu_timestamp_tz;
 		GDS_TIME vlu_sql_time;
@@ -147,12 +147,12 @@ inline void impure_value::make_decimal128(const Firebird::Decimal128 val)
 
 inline void impure_value::make_decimal_fixed(const Firebird::Int128 val, const signed char scale)
 {
-	this->vlu_misc.vlu_dec_fixed = val;
-	this->vlu_desc.dsc_dtype = dtype_dec_fixed;
+	this->vlu_misc.vlu_int128 = val;
+	this->vlu_desc.dsc_dtype = dtype_int128;
 	this->vlu_desc.dsc_length = sizeof(Firebird::Int128);
 	this->vlu_desc.dsc_scale = scale;
 	this->vlu_desc.dsc_sub_type = 0;
-	this->vlu_desc.dsc_address = reinterpret_cast<UCHAR*>(&this->vlu_misc.vlu_dec_fixed);
+	this->vlu_desc.dsc_address = reinterpret_cast<UCHAR*>(&this->vlu_misc.vlu_int128);
 }
 
 struct impure_value_ex : public impure_value

@@ -188,7 +188,7 @@ void Int128::toString(int scale, string& to) const
 
 	if (scale)
 	{
-		if (scale < -34 || scale > 4)
+		if (scale < -38 || scale > 4)
 		{
 			string tmp;
 			tmp.printf("E%d", scale);

@@ -50,7 +50,7 @@ extern "C"
 using namespace Firebird;
 
 const DecimalStatus DecimalStatus::DEFAULT(FB_DEC_Errors);
-const DecimalBinding DecimalBinding::DEFAULT;
+const NumericBinding NumericBinding::DEFAULT;
 
 namespace {
 

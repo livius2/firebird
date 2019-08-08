@@ -606,7 +606,7 @@ void FUN_evaluate(thread_db* tdbb, const Function* function, const NestValueArra
 				break;
 
 			case dtype_dec128:
-			case dtype_dec_fixed:
+			case dtype_int128:
 				{
 					const Decimal128 d = MOV_get_dec128(tdbb, input);
 					if (parameter->prm_fun_mechanism == FUN_value)
@@ -1133,8 +1133,8 @@ static void invoke(thread_db* tdbb,
 			value->vlu_misc.vlu_dec128 = CALL_UDF<Decimal128>(tdbb, function->fun_entrypoint, args);
 			break;
 
-		case dtype_dec_fixed:
-			value->vlu_misc.vlu_dec_fixed = CALL_UDF<Int128>(tdbb, function->fun_entrypoint, args);
+		case dtype_int128:
+			value->vlu_misc.vlu_int128 = CALL_UDF<Int128>(tdbb, function->fun_entrypoint, args);
 			break;
 
 		case dtype_timestamp:

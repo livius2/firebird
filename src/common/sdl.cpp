@@ -855,8 +855,8 @@ static const UCHAR* sdl_desc(const UCHAR* ptr, DSC* desc)
 		desc->dsc_length = sizeof(Decimal128);
 		break;
 
-	case blr_dec_fixed:
-		desc->dsc_dtype = dtype_dec_fixed;
+	case blr_int128:
+		desc->dsc_dtype = dtype_int128;
 		desc->dsc_length = sizeof(Int128);
 		break;
 

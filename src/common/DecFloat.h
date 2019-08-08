@@ -115,27 +115,27 @@ struct DecimalStatus
 	USHORT decExtFlag, roundingMode;
 };
 
-struct DecimalBinding
+struct NumericBinding
 {
 	enum Bind
 	{
-		DEC_NATIVE,
-		DEC_TEXT,
-		DEC_DOUBLE,
-		DEC_NUMERIC
+		NUM_NATIVE,
+		NUM_TEXT,
+		NUM_DOUBLE,
+		NUM_INT64
 	};
 
-	DecimalBinding()
-		: bind(DEC_NATIVE),
+	NumericBinding()
+		: bind(NUM_NATIVE),
 		  numScale(0)
 	{}
 
-	DecimalBinding(Bind aBind, SCHAR aNumScale = 0)
+	NumericBinding(Bind aBind, SCHAR aNumScale = 0)
 		: bind(aBind),
 		  numScale(aNumScale)
 	{}
 
-	static const DecimalBinding DEFAULT;
+	static const NumericBinding DEFAULT;
 	static const SCHAR MAX_SCALE = 18;
 
 	Bind bind;

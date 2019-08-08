@@ -3035,8 +3035,8 @@ static int blr_print_dtype(gds_ctl* control)
 		length = sizeof(Firebird::Decimal64);
 		break;
 
-	case blr_dec_fixed:
-		string = "dec_fixed";
+	case blr_int128:
+		string = "int128";
 		length = sizeof(Firebird::Int128);
 		break;
 
@@ -3101,7 +3101,7 @@ static int blr_print_dtype(gds_ctl* control)
 	case blr_long:
 	case blr_quad:
 	case blr_int64:
-	case blr_dec_fixed:
+	case blr_int128:
 		blr_print_byte(control);
 		break;
 

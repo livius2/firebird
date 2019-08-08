@@ -30,6 +30,7 @@
 #include "../dsql/Nodes.h"
 #include "../dsql/DdlNodes.h"
 #include "../dsql/NodePrinter.h"
+#include "../common/DecFloat.h"
 
 namespace Jrd {
 
@@ -1751,8 +1752,10 @@ public:
 class SetDecFloatBindNode : public SessionManagementNode
 {
 public:
-	SetDecFloatBindNode(MemoryPool& pool)
-		: SessionManagementNode(pool)
+	SetDecFloatBindNode(MemoryPool& pool, bool isInt128)
+		: SessionManagementNode(pool),
+		  bind(Firebird::NumericBinding::NUM_NATIVE),
+		  bindInt128(isInt128)
 	{
 	}
 
@@ -1770,7 +1773,8 @@ public:
 	virtual void execute(thread_db* tdbb, dsql_req* request, jrd_tra** traHandle) const;
 
 public:
-	Firebird::DecimalBinding bind;
+	Firebird::NumericBinding bind;
+	bool bindInt128;
 };
 
 

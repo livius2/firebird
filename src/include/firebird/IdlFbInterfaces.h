@@ -5894,7 +5894,7 @@ namespace Firebird
 	public:
 		static const unsigned VERSION = 2;
 
-		static const unsigned STRING_SIZE = 41;
+		static const unsigned STRING_SIZE = 46;
 
 		template <typename StatusType> void toString(StatusType* status, const FB_I128* from, int scale, unsigned bufferLength, char* buffer)
 		{

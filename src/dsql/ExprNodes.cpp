@@ -529,7 +529,7 @@ UCHAR getFType(const dsc& desc)
 		return DSC_ZTYPE_FLT64;
 	case dtype_dec128:
 		return DSC_ZTYPE_FLT128;
-	case dtype_dec_fixed:
+	case dtype_int128:
 		return DSC_ZTYPE_FIXED;
 	case dtype_int64:
 		return DSC_ZTYPE_INT64;
@@ -551,7 +551,7 @@ unsigned setDecDesc(dsc* desc, const dsc& desc1, const dsc& desc2, Scaling sc, S
 		zipType = DSC_ZTYPE_FLT128;		// In production case fallback to Decimal128
 
 	desc->dsc_dtype = zipType == DSC_ZTYPE_FLT64 ? dtype_dec64 :
-		zipType == DSC_ZTYPE_FLT128 ? dtype_dec128 : dtype_dec_fixed;
+		zipType == DSC_ZTYPE_FLT128 ? dtype_dec128 : dtype_int128;
 	desc->dsc_sub_type = 0;
 	desc->dsc_flags = (desc1.dsc_flags | desc2.dsc_flags) & DSC_nullable;
 	desc->dsc_scale = 0;
@@ -575,7 +575,7 @@ unsigned setDecDesc(dsc* desc, const dsc& desc1, const dsc& desc2, Scaling sc, S
 	desc->dsc_length = zipType == DSC_ZTYPE_FLT64 ? sizeof(Decimal64) :
 		zipType == DSC_ZTYPE_FLT128 ? sizeof(Decimal128) : sizeof(Int128);
 
-	return zipType == DSC_ZTYPE_FIXED ? ExprNode::FLAG_DECFIXED : ExprNode::FLAG_DECFLOAT;
+	return zipType == DSC_ZTYPE_FIXED ? ExprNode::FLAG_INT128 : ExprNode::FLAG_DECFLOAT;
 }
 
 } // anon namespace
@@ -768,7 +768,7 @@ void ArithmeticNode::makeDialect1(dsc* desc, dsc& desc1, dsc& desc2)
 
 				case dtype_dec64:
 				case dtype_dec128:
-				case dtype_dec_fixed:
+				case dtype_int128:
 					setDecDesc(desc, desc1, desc2, SCALE_MIN);
 					break;
 
@@ -796,7 +796,7 @@ void ArithmeticNode::makeDialect1(dsc* desc, dsc& desc1, dsc& desc2)
 			switch (dtype)
 			{
 				case dtype_dec128:
-				case dtype_dec_fixed:
+				case dtype_int128:
 					setDecDesc(desc, desc1, desc2, SCALE_SUM);
 					break;
 
@@ -891,8 +891,8 @@ void ArithmeticNode::makeDialect3(dsc* desc, dsc& desc1, dsc& desc2)
 			// <timestamp> arithmetic, but returns a <double>
 			if (DTYPE_IS_EXACT(dtype1) && DTYPE_IS_EXACT(dtype2))
 			{
-				if (desc1.isDecFixed() || desc2.isDecFixed())
-					dtype = dtype_dec_fixed;
+				if (desc1.isInt128() || desc2.isInt128())
+					dtype = dtype_int128;
 				else
 					dtype = dtype_int64;
 			}
@@ -1031,7 +1031,7 @@ void ArithmeticNode::makeDialect3(dsc* desc, dsc& desc1, dsc& desc2)
 
 				case dtype_dec64:
 				case dtype_dec128:
-				case dtype_dec_fixed:
+				case dtype_int128:
 					setDecDesc(desc, desc1, desc2, SCALE_MIN);
 					break;
 
@@ -1080,7 +1080,7 @@ void ArithmeticNode::makeDialect3(dsc* desc, dsc& desc1, dsc& desc2)
 
 			switch (dtype)
 			{
-				case dtype_dec_fixed:
+				case dtype_int128:
 				case dtype_dec128:
 					setDecDesc(desc, desc1, desc2, SCALE_SUM);
 					break;
@@ -1139,7 +1139,7 @@ void ArithmeticNode::makeDialect3(dsc* desc, dsc& desc1, dsc& desc2)
 					break;
 
 				case dtype_dec128:
-				case dtype_dec_fixed:
+				case dtype_int128:
 					setDecDesc(desc, desc1, desc2, SCALE_SUM);
 					break;
 
@@ -1351,7 +1351,7 @@ void ArithmeticNode::getDescDialect1(thread_db* /*tdbb*/, dsc* desc, dsc& desc1,
 
 				case dtype_dec64:
 				case dtype_dec128:
-				case dtype_dec_fixed:
+				case dtype_int128:
 					nodFlags |= setDecDesc(desc, desc1, desc2, SCALE_MIN, &nodScale);
 					break;
 
@@ -1398,7 +1398,7 @@ void ArithmeticNode::getDescDialect1(thread_db* /*tdbb*/, dsc* desc, dsc& desc1,
 					return;
 
 				case dtype_dec128:
-				case dtype_dec_fixed:
+				case dtype_int128:
 					nodFlags |= setDecDesc(desc, desc1, desc2, SCALE_SUM, &nodScale);
 					break;
 
@@ -1473,8 +1473,8 @@ void ArithmeticNode::getDescDialect3(thread_db* /*tdbb*/, dsc* desc, dsc& desc1,
 
 			if (DTYPE_IS_EXACT(dtype1) && DTYPE_IS_EXACT(dtype2))
 			{
-				if (desc1.isDecFixed() || desc2.isDecFixed())
-					dtype = dtype_dec_fixed;
+				if (desc1.isInt128() || desc2.isInt128())
+					dtype = dtype_int128;
 				else
 					dtype = dtype_int64;
 			}
@@ -1624,7 +1624,7 @@ void ArithmeticNode::getDescDialect3(thread_db* /*tdbb*/, dsc* desc, dsc& desc1,
 
 				case dtype_dec64:
 				case dtype_dec128:
-				case dtype_dec_fixed:
+				case dtype_int128:
 					nodFlags |= setDecDesc(desc, desc1, desc2, SCALE_MIN, &nodScale);
 					return;
 
@@ -1678,7 +1678,7 @@ void ArithmeticNode::getDescDialect3(thread_db* /*tdbb*/, dsc* desc, dsc& desc1,
 					return;
 
 				case dtype_dec128:
-				case dtype_dec_fixed:
+				case dtype_int128:
 					nodFlags |= setDecDesc(desc, desc1, desc2, SCALE_SUM, &nodScale);
 					return;
 
@@ -1983,18 +1983,20 @@ dsc* ArithmeticNode::add2(thread_db* tdbb, const dsc* desc, impure_value* value,
 		return result;
 	}
 
-	if (node->nodFlags & FLAG_DECFIXED)
+	// 128-bit arithmetic
+
+	if (node->nodFlags & FLAG_INT128)
 	{
-		const Int128 d1 = MOV_get_dec_fixed(tdbb, desc, node->nodScale);
-		const Int128 d2 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, node->nodScale);
+		const Int128 d1 = MOV_get_int128(tdbb, desc, node->nodScale);
+		const Int128 d2 = MOV_get_int128(tdbb, &value->vlu_desc, node->nodScale);
 
-		value->vlu_misc.vlu_dec_fixed = (blrOp == blr_subtract) ? d2.sub(d1) : d1.add(d2);
+		value->vlu_misc.vlu_int128 = (blrOp == blr_subtract) ? d2.sub(d1) : d1.add(d2);
 
-		result->dsc_dtype = dtype_dec_fixed;
+		result->dsc_dtype = dtype_int128;
 		result->dsc_length = sizeof(Int128);
 		result->dsc_scale = node->nodScale;
 		result->dsc_sub_type = 0;
-		result->dsc_address = (UCHAR*) &value->vlu_misc.vlu_dec_fixed;
+		result->dsc_address = (UCHAR*) &value->vlu_misc.vlu_int128;
 
 		return result;
 	}
@@ -2085,18 +2087,20 @@ dsc* ArithmeticNode::multiply(const dsc* desc, impure_value* value) const
 		return &value->vlu_desc;
 	}
 
-	if (nodFlags & FLAG_DECFIXED)
+	// 128-bit arithmetic
+
+	if (nodFlags & FLAG_INT128)
 	{
-		const Int128 d1 = MOV_get_dec_fixed(tdbb, desc, nodScale);
-		const Int128 d2 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, nodScale);
+		const Int128 d1 = MOV_get_int128(tdbb, desc, nodScale);
+		const Int128 d2 = MOV_get_int128(tdbb, &value->vlu_desc, nodScale);
 
-		value->vlu_misc.vlu_dec_fixed = d1.mul(d2);
+		value->vlu_misc.vlu_int128 = d1.mul(d2);
 
-		value->vlu_desc.dsc_dtype = dtype_dec_fixed;
+		value->vlu_desc.dsc_dtype = dtype_int128;
 		value->vlu_desc.dsc_length = sizeof(Int128);
 		value->vlu_desc.dsc_scale = nodScale;
 		value->vlu_desc.dsc_sub_type = 0;
-		value->vlu_desc.dsc_address = (UCHAR*) &value->vlu_misc.vlu_dec_fixed;
+		value->vlu_desc.dsc_address = (UCHAR*) &value->vlu_misc.vlu_int128;
 
 		return &value->vlu_desc;
 	}
@@ -2195,19 +2199,21 @@ dsc* ArithmeticNode::multiply2(const dsc* desc, impure_value* value) const
 		return &value->vlu_desc;
 	}
 
-	if (nodFlags & FLAG_DECFIXED)
+	// 128-bit arithmetic
+
+	if (nodFlags & FLAG_INT128)
 	{
 		const SSHORT scale = NUMERIC_SCALE(*desc);
-		const Int128 d1 = MOV_get_dec_fixed(tdbb, desc, scale);
-		const Int128 d2 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, nodScale - scale);
+		const Int128 d1 = MOV_get_int128(tdbb, desc, scale);
+		const Int128 d2 = MOV_get_int128(tdbb, &value->vlu_desc, nodScale - scale);
 
-		value->vlu_misc.vlu_dec_fixed = d1.mul(d2);
+		value->vlu_misc.vlu_int128 = d1.mul(d2);
 
-		value->vlu_desc.dsc_dtype = dtype_dec_fixed;
+		value->vlu_desc.dsc_dtype = dtype_int128;
 		value->vlu_desc.dsc_length = sizeof(Int128);
 		value->vlu_desc.dsc_scale = nodScale;
 		value->vlu_desc.dsc_sub_type = 0;
-		value->vlu_desc.dsc_address = (UCHAR*) &value->vlu_misc.vlu_dec_fixed;
+		value->vlu_desc.dsc_address = (UCHAR*) &value->vlu_misc.vlu_int128;
 
 		return &value->vlu_desc;
 	}
@@ -2308,19 +2314,21 @@ dsc* ArithmeticNode::divide2(const dsc* desc, impure_value* value) const
 		return &value->vlu_desc;
 	}
 
-	if (nodFlags & FLAG_DECFIXED)
+	// 128-bit arithmetic
+
+	if (nodFlags & FLAG_INT128)
 	{
 		const SSHORT scale = NUMERIC_SCALE(*desc);
-		const Int128 d2 = MOV_get_dec_fixed(tdbb, desc, scale);
-		const Int128 d1 = MOV_get_dec_fixed(tdbb, &value->vlu_desc, nodScale - scale);
+		const Int128 d2 = MOV_get_int128(tdbb, desc, scale);
+		const Int128 d1 = MOV_get_int128(tdbb, &value->vlu_desc, nodScale - scale);
 
-		value->vlu_misc.vlu_dec_fixed = d1.div(d2, scale * 2);
+		value->vlu_misc.vlu_int128 = d1.div(d2, scale * 2);
 
-		value->vlu_desc.dsc_dtype = dtype_dec_fixed;
+		value->vlu_desc.dsc_dtype = dtype_int128;
 		value->vlu_desc.dsc_length = sizeof(Int128);
 		value->vlu_desc.dsc_scale = nodScale;
 		value->vlu_desc.dsc_sub_type = 0;
-		value->vlu_desc.dsc_address = (UCHAR*) &value->vlu_misc.vlu_dec_fixed;
+		value->vlu_desc.dsc_address = (UCHAR*) &value->vlu_misc.vlu_int128;
 
 		return &value->vlu_desc;
 	}
@@ -7833,7 +7841,7 @@ bool LiteralNode::sameAs(CompilerScratch* csb, const ExprNode* other, bool ignor
 ValueExprNode* LiteralNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 {
 	if (csb->csb_preferredDesc && ((DTYPE_IS_DECFLOAT(csb->csb_preferredDesc->dsc_dtype) ||
-		 csb->csb_preferredDesc->dsc_dtype == dtype_dec_fixed) && dsqlStr))
+		 csb->csb_preferredDesc->dsc_dtype == dtype_int128) && dsqlStr))
 	{
 		const string& s(dsqlStr->getString());
 		dsc desc;
@@ -7855,10 +7863,10 @@ ValueExprNode* LiteralNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 			litDesc.dsc_scale = 0;
 			break;
 
-		case dtype_dec_fixed:
-			*((Int128*) litDesc.dsc_address) = CVT_get_dec_fixed(&desc,
+		case dtype_int128:
+			*((Int128*) litDesc.dsc_address) = CVT_get_int128(&desc,
 				csb->csb_preferredDesc->dsc_scale, tdbb->getAttachment()->att_dec_status, ERR_post);
-			litDesc.dsc_dtype = dtype_dec_fixed;
+			litDesc.dsc_dtype = dtype_int128;
 			litDesc.dsc_scale = csb->csb_preferredDesc->dsc_scale;
 			break;
 		}
@@ -8739,8 +8747,8 @@ dsc* NegateNode::execute(thread_db* tdbb, jrd_req* request) const
 			impure->vlu_misc.vlu_dec128 = impure->vlu_misc.vlu_dec128.neg();
 			break;
 
-		case dtype_dec_fixed:
-			impure->vlu_misc.vlu_dec_fixed = impure->vlu_misc.vlu_dec_fixed.neg();
+		case dtype_int128:
+			impure->vlu_misc.vlu_int128 = impure->vlu_misc.vlu_int128.neg();
 			break;
 
 		case dtype_int64:
@@ -11086,7 +11094,7 @@ void SubQueryNode::getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc)
 
 			case dtype_dec64:
 			case dtype_dec128:
-			case dtype_dec_fixed:
+			case dtype_int128:
 				desc->dsc_dtype = dtype_dec128;
 				desc->dsc_length = sizeof(Decimal128);
 				desc->dsc_scale = 0;

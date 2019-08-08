@@ -192,8 +192,8 @@ MetadataFromBlr::MetadataFromBlr(unsigned aBlrLength, const unsigned char* aBlr,
 			item->length = sizeof(Decimal128);
 			break;
 
-		case blr_dec_fixed:
-			item->type = SQL_DEC_FIXED;
+		case blr_int128:
+			item->type = SQL_INT128;
 			item->length = sizeof(Int128);
 			item->scale = rdr.getByte();
 			break;

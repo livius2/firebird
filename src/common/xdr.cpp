@@ -274,7 +274,7 @@ bool_t xdr_datum( XDR* xdrs, const dsc* desc, UCHAR* buffer)
 			return FALSE;
 		break;
 
-	case dtype_dec_fixed:
+	case dtype_int128:
 		fb_assert(desc->dsc_length >= sizeof(Firebird::Int128));
 		if (!xdr_int128(xdrs, reinterpret_cast<Firebird::Int128*>(p)))
 			return FALSE;

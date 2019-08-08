@@ -1325,12 +1325,18 @@ public:
 		try
 		{
 			Int128* i128 = (Int128*)to;
-			i128->set(0, 0);		// !!!!!!!!!!!!!!!!!!!!!!!!!!! TODO
+			scale -= CVT_decompose(from, static_cast<USHORT>(strlen(from)), i128, errorFunction);
+			i128->setScale(scale);
 		}
 		catch (const Exception& ex)
 		{
 			ex.stuffException(status);
 		}
+	}
+
+	static void errorFunction(const Arg::StatusVector& v)
+	{
+		v.raise();
 	}
 };
 

@@ -133,6 +133,7 @@ static void datetime_to_text(const dsc*, dsc*, Callbacks*);
 static void float_to_text(const dsc*, dsc*, Callbacks*);
 static void decimal_float_to_text(const dsc*, dsc*, DecimalStatus, Callbacks*);
 static void integer_to_text(const dsc*, dsc*, Callbacks*);
+static void int128_to_text(const dsc*, dsc*, Callbacks* cb);
 static void localError(const Firebird::Arg::StatusVector&);
 
 class DummyException {};
@@ -303,6 +304,34 @@ static void decimal_float_to_text(const dsc* from, dsc* to, DecimalStatus decSt,
 			((Decimal64*) from->dsc_address)->toString(decSt, sizeof(temp), temp);
 		else if (from->dsc_dtype == dtype_dec128)
 			((Decimal128*) from->dsc_address)->toString(decSt, sizeof(temp), temp);
+		else
+			fb_assert(false);
+	}
+	catch (const Exception& ex)
+	{
+		// reraise using function passed in callbacks
+		Arg::StatusVector v(ex);
+		cb->err(v);
+	}
+
+	dsc intermediate;
+	intermediate.dsc_dtype = dtype_text;
+	intermediate.dsc_ttype() = ttype_ascii;
+	intermediate.dsc_address = reinterpret_cast<UCHAR*>(temp);
+	intermediate.dsc_length = strlen(temp);
+
+	CVT_move_common(&intermediate, to, 0, cb);
+}
+
+
+static void int128_to_text(const dsc* from, dsc* to, Callbacks* cb)
+{
+	char temp[50];
+
+	try
+	{
+		if (from->dsc_dtype == dtype_int128)
+			((Int128*) from->dsc_address)->toString(from->dsc_scale, sizeof(temp), temp);
 		else
 			fb_assert(false);
 	}
@@ -1069,7 +1098,7 @@ SLONG CVT_get_long(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFunc
 
 		return d128.toInteger(decSt, scale);
 
-	case dtype_dec_fixed:
+	case dtype_int128:
 		return ((Int128*) p)->toInteger(scale);
 
 	case dtype_real:
@@ -1272,7 +1301,7 @@ double CVT_get_double(const dsc* desc, DecimalStatus decSt, ErrorFunction err, b
 			return d128.toDouble(decSt);
 		}
 
-	case dtype_dec_fixed:
+	case dtype_int128:
 		value = ((Int128*) desc->dsc_address)->toDouble();
 		break;
 
@@ -1576,7 +1605,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_boolean:
 		case dtype_dec64:
 		case dtype_dec128:
-		case dtype_dec_fixed:
+		case dtype_int128:
 			CVT_conversion_error(from, cb->err);
 			break;
 		}
@@ -1627,7 +1656,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_boolean:
 		case dtype_dec64:
 		case dtype_dec128:
-		case dtype_dec_fixed:
+		case dtype_int128:
 			CVT_conversion_error(from, cb->err);
 			break;
 		}
@@ -1669,7 +1698,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_boolean:
 		case dtype_dec64:
 		case dtype_dec128:
-		case dtype_dec_fixed:
+		case dtype_int128:
 			CVT_conversion_error(from, cb->err);
 			break;
 		}
@@ -1714,7 +1743,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_boolean:
 		case dtype_dec64:
 		case dtype_dec128:
-		case dtype_dec_fixed:
+		case dtype_int128:
 			CVT_conversion_error(from, cb->err);
 			break;
 		}
@@ -1761,7 +1790,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_boolean:
 		case dtype_dec64:
 		case dtype_dec128:
-		case dtype_dec_fixed:
+		case dtype_int128:
 			CVT_conversion_error(from, cb->err);
 			break;
 		}
@@ -1941,8 +1970,11 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_long:
 		case dtype_int64:
 		case dtype_quad:
-		case dtype_dec_fixed:
 			integer_to_text(from, to, cb);
+			return;
+
+		case dtype_int128:
+			int128_to_text(from, to, cb);
 			return;
 
 		case dtype_real:
@@ -2080,8 +2112,8 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		*((Decimal128*) p) = CVT_get_dec128(from, decSt, cb->err);
 		return;
 
-	case dtype_dec_fixed:
-		*((Int128*) p) = CVT_get_dec_fixed(from, (SSHORT) to->dsc_scale, decSt, cb->err);
+	case dtype_int128:
+		*((Int128*) p) = CVT_get_int128(from, (SSHORT) to->dsc_scale, decSt, cb->err);
 		return;
 
 	case dtype_boolean:
@@ -2106,7 +2138,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_double:
 		case dtype_dec64:
 		case dtype_dec128:
-		case dtype_dec_fixed:
+		case dtype_int128:
 			CVT_conversion_error(from, cb->err);
 			break;
 		}
@@ -2594,6 +2626,17 @@ static SSHORT cvt_decompose(const char*	string,
 			switch(return_value->compareLimitBy10())
 			{
 			case RetPtr::RETVAL_OVERFLOW:
+				if (fraction)
+				{
+					while (p < end)
+					{
+						if (*p != '0')
+							break;
+						++p;
+					}
+					if (p >= end)
+						continue;
+				}
 				err(Arg::Gds(isc_arith_except) << Arg::Gds(isc_numeric_out_of_range));
 				break;
 			case RetPtr::RETVAL_POSSIBLE_OVERFLOW:
@@ -2990,7 +3033,7 @@ Decimal64 CVT_get_dec64(const dsc* desc, DecimalStatus decSt, ErrorFunction err)
 		case dtype_dec128:
 			return ((Decimal128*) p)->toDecimal64(decSt);
 
-		case dtype_dec_fixed:
+		case dtype_int128:
 			return d64.set(*((Int128*) p), decSt, scale);
 
 		default:
@@ -3077,7 +3120,7 @@ Decimal128 CVT_get_dec128(const dsc* desc, DecimalStatus decSt, ErrorFunction er
 		case dtype_dec128:
 			return *(Decimal128*) p;
 
-		case dtype_dec_fixed:
+		case dtype_int128:
 			return d128.set(*((Int128*) p), decSt, scale);
 
 		default:
@@ -3098,7 +3141,7 @@ Decimal128 CVT_get_dec128(const dsc* desc, DecimalStatus decSt, ErrorFunction er
 }
 
 
-Int128 CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFunction err)
+Int128 CVT_get_int128(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFunction err)
 {
 /**************************************
  *
@@ -3230,7 +3273,7 @@ Int128 CVT_get_dec_fixed(const dsc* desc, SSHORT scale, DecimalStatus decSt, Err
 			dfix.set(decSt, tmp);
 			break;
 
-		case dtype_dec_fixed:
+		case dtype_int128:
 			dfix = *((Int128*) p);
 			dfix.setScale(scale);
 			break;
@@ -3365,7 +3408,7 @@ SQUAD CVT_get_quad(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFunc
 
 	case dtype_dec64:
 	case dtype_dec128:
-	case dtype_dec_fixed:
+	case dtype_int128:
 		SINT64_to_SQUAD(CVT_get_int64(desc, scale, decSt, err), value);
 		break;
 
@@ -3441,7 +3484,7 @@ SINT64 CVT_get_int64(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFu
 			return d128.toInt64(decSt, scale);
 		}
 
-	case dtype_dec_fixed:
+	case dtype_int128:
 		return ((Int128*) p)->toInt64(scale);
 
 	case dtype_real:

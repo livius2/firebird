@@ -8364,7 +8364,10 @@ void SetDecFloatBindNode::execute(thread_db* tdbb, dsql_req* /*request*/, jrd_tr
 {
 	SET_TDBB(tdbb);
 	Attachment* const attachment = tdbb->getAttachment();
-	attachment->att_dec_binding = bind;
+	if (bindInt128)
+		attachment->att_i128_binding = bind;
+	else
+		attachment->att_dec_binding = bind;
 }
 
 

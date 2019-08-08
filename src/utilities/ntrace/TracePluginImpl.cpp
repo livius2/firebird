@@ -763,7 +763,7 @@ void TracePluginImpl::appendParams(ITraceParams* params)
 			case dtype_dec128:
 				paramtype = "decfloat(34)";
 				break;
-			case dtype_dec_fixed:
+			case dtype_int128:
 				paramtype = "decimal";
 				break;
 
@@ -888,7 +888,7 @@ void TracePluginImpl::appendParams(ITraceParams* params)
 					((Decimal128*) parameters->dsc_address)->toString(paramvalue);
 					break;
 
-				case dtype_dec_fixed:
+				case dtype_int128:
 					try
 					{
 						((Int128*) parameters->dsc_address)->toString(parameters->dsc_scale, paramvalue);
