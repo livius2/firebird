@@ -265,7 +265,7 @@ public:
 	Firebird::IMessageMetadata* getOutputMetadata(Firebird::CheckStatusWrapper* userStatus);
 	Firebird::IMessageMetadata* getInputMetadata(Firebird::CheckStatusWrapper* userStatus);
 	unsigned getType(Firebird::CheckStatusWrapper* status);
-    const char* getPlan(Firebird::CheckStatusWrapper* status, FB_BOOLEAN detailed);
+    const char* getPlan(Firebird::CheckStatusWrapper* status, isc_info_sql_plan_format plan_format);
 	Firebird::ITransaction* execute(Firebird::CheckStatusWrapper* status,
 		Firebird::ITransaction* transaction, Firebird::IMessageMetadata* inMetadata, void* inBuffer,
 		Firebird::IMessageMetadata* outMetadata, void* outBuffer);

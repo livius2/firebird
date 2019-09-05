@@ -564,7 +564,7 @@ public:
 						 unsigned int itemsLength, const unsigned char* items,
 						 unsigned int bufferLength, unsigned char* buffer);
 	unsigned getType(CheckStatusWrapper* status);
-	const char* getPlan(CheckStatusWrapper* status, FB_BOOLEAN detailed);
+	const char* getPlan(CheckStatusWrapper* status, isc_info_sql_plan_format plan_format);
 	Firebird::IMessageMetadata* getInputMetadata(CheckStatusWrapper* status);
 	Firebird::IMessageMetadata* getOutputMetadata(CheckStatusWrapper* status);
 	ISC_UINT64 getAffectedRecords(CheckStatusWrapper* status);
@@ -3860,7 +3860,7 @@ unsigned Statement::getFlags(CheckStatusWrapper* status)
 }
 
 
-const char* Statement::getPlan(CheckStatusWrapper* status, FB_BOOLEAN detailed)
+const char* Statement::getPlan(CheckStatusWrapper* status, isc_info_sql_plan_format plan_format)
 {
 	try
 	{
@@ -3875,7 +3875,7 @@ const char* Statement::getPlan(CheckStatusWrapper* status, FB_BOOLEAN detailed)
 
 		statement->raiseException();
 
-		return metadata.getPlan(detailed);
+		return metadata.getPlan(plan_format);
 	}
 	catch (const Exception& ex)
 	{

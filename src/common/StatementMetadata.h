@@ -67,7 +67,7 @@ public:
 
 	unsigned getType();
 	unsigned getFlags();
-	const char* getPlan(bool detailed);
+	const char* getPlan(isc_info_sql_plan_format plan_format);
 	IMessageMetadata* getInputMetadata();
 	IMessageMetadata* getOutputMetadata();
 	ISC_UINT64 getAffectedRecords();

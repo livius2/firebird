@@ -5479,7 +5479,7 @@ unsigned JStatement::getFlags(CheckStatusWrapper* userStatus)
 }
 
 
-const char* JStatement::getPlan(CheckStatusWrapper* userStatus, FB_BOOLEAN detailed)
+const char* JStatement::getPlan(CheckStatusWrapper* userStatus, isc_info_sql_plan_format plan_format)
 {
 	const char* ret = NULL;
 
@@ -5490,7 +5490,7 @@ const char* JStatement::getPlan(CheckStatusWrapper* userStatus, FB_BOOLEAN detai
 
 		try
 		{
-			ret = metadata.getPlan(detailed);
+			ret = metadata.getPlan(plan_format);
 		}
 		catch (const Exception& ex)
 		{

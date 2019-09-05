@@ -114,12 +114,36 @@ bool SkipRowsStream::lockRecord(thread_db* tdbb) const
 	return m_next->lockRecord(tdbb);
 }
 
-void SkipRowsStream::print(thread_db* tdbb, string& plan, bool detailed, unsigned level) const
+void SkipRowsStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
 {
-	if (detailed)
-		plan += printIndent(++level) + "Skip N Records";
+	switch (plan_format)
+	{
+		case isc_info_sql_plan_format_plain:
+			break;
+			
+		case isc_info_sql_plan_format_explain_legacy:
+			plan += printIndent(++level, plan_format) + "Skip N Records";
+			break;
+			
+		case isc_info_sql_plan_format_explain_xml:
+			{
+				//do not know how to get skip value specified
+				//jrd_req* const request = tdbb->getRequest();
+				//Impure* const impure = request->getImpure<Impure>(m_impure);
+				string extras;
+				//extras.printf(" SkipRows=\"%" ULONGFORMAT"\"", impure->irsb_count);
+				plan += printIndent(++level, plan_format) + "<Node Operation=\"Skip N Records\"" + extras + ">";
+				break;
+			}
+			
+		default:
+			fb_assert(false);			
+	}
 
-	m_next->print(tdbb, plan, detailed, level);
+	m_next->print(tdbb, plan, plan_format, level);
+	
+	if (plan_format == isc_info_sql_plan_format_explain_xml)
+		plan += printIndent(level, plan_format) + "</Node>";
 }
 
 void SkipRowsStream::markRecursive()

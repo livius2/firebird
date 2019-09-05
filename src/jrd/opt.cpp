@@ -425,7 +425,7 @@ static const UCHAR sort_dtypes[] =
 };
 
 
-string OPT_get_plan(thread_db* tdbb, const jrd_req* request, bool detailed)
+string OPT_get_plan(thread_db* tdbb, const jrd_req* request, isc_info_sql_plan_format plan_format)
 {
 /**************************************
  *
@@ -445,8 +445,26 @@ string OPT_get_plan(thread_db* tdbb, const jrd_req* request, bool detailed)
 
 		for (FB_SIZE_T i = 0; i < fors.getCount(); i++)
 		{
-			plan += detailed ? "\nSelect Expression" : "\nPLAN ";
-			fors[i]->print(tdbb, plan, detailed, 0);
+			switch (plan_format)
+			{
+				case isc_info_sql_plan_format_plain:
+					plan += "\nPLAN ";
+					break;
+					
+				case isc_info_sql_plan_format_explain_legacy:
+					plan += "\nSelect Expression";
+					break;
+					
+				case isc_info_sql_plan_format_explain_xml:
+					plan += "\n<Select_Expression>";
+					break;
+				
+				default:
+					fb_assert(false);								
+			}
+			fors[i]->print(tdbb, plan, plan_format, 0);
+			if (plan_format == isc_info_sql_plan_format_explain_xml)
+				plan += "\n</Select_Expression>";
 		}
 	}
 

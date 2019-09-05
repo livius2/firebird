@@ -80,40 +80,130 @@ string RecordSource::printName(thread_db* tdbb, const string& name, const string
 	return result;
 }
 
-string RecordSource::printIndent(unsigned level)
+string RecordSource::printIndent(unsigned level, isc_info_sql_plan_format plan_format)
 {
 	fb_assert(level);
-
-	const string indent(level * 4, ' ');
-	return string("\n" + indent + "-> ");
+	
+	switch (plan_format)
+	{
+		case isc_info_sql_plan_format_plain:
+			{
+				const string indent(level * 4, ' ');
+				return string("\n" + indent + "-> ");
+				break;
+			}
+			
+		case isc_info_sql_plan_format_explain_legacy:
+			{
+				const string indent(level * 4, ' ');
+				return string("\n" + indent + "-> ");
+				break;
+			}
+			
+		case isc_info_sql_plan_format_explain_xml:
+			{
+				const string indent(level, '\t');
+				return string("\n" + indent);
+				break;
+			}
+			
+		default:
+			fb_assert(false);			
+	}
 }
 
 void RecordSource::printInversion(thread_db* tdbb, const InversionNode* inversion,
-								  string& plan, bool detailed, unsigned level, bool navigation)
+								  string& plan, isc_info_sql_plan_format plan_format, unsigned level, bool navigation)
 {
-	if (detailed)
-		plan += printIndent(++level);
+	switch (plan_format)
+	{
+		case isc_info_sql_plan_format_plain:
+			break;
+			
+		case isc_info_sql_plan_format_explain_legacy:
+			plan += printIndent(++level, plan_format);
+			break;
+			
+		case isc_info_sql_plan_format_explain_xml:
+			plan += printIndent(++level, plan_format);
+			break;
+			
+		default:
+			fb_assert(false);			
+	}
 
 	switch (inversion->type)
 	{
 	case InversionNode::TYPE_AND:
-		if (detailed)
-			plan += "Bitmap And";
-		printInversion(tdbb, inversion->node1, plan, detailed, level);
-		printInversion(tdbb, inversion->node2, plan, detailed, level);
+		switch (plan_format)
+		{
+			case isc_info_sql_plan_format_plain:
+				break;
+				
+			case isc_info_sql_plan_format_explain_legacy:
+				plan += "Bitmap And";
+				break;
+				
+			case isc_info_sql_plan_format_explain_xml:
+				plan += "<Node Operation=\"Bitmap And\">";
+				break;
+				
+			default:
+				fb_assert(false);			
+		}
+			
+		printInversion(tdbb, inversion->node1, plan, plan_format, level);
+		printInversion(tdbb, inversion->node2, plan, plan_format, level);
+		
+		if (plan_format == isc_info_sql_plan_format_explain_xml)
+			plan += printIndent(level, plan_format) + "</Node>";
 		break;
 
 	case InversionNode::TYPE_OR:
 	case InversionNode::TYPE_IN:
-		if (detailed)
-			plan += "Bitmap Or";
-		printInversion(tdbb, inversion->node1, plan, detailed, level);
-		printInversion(tdbb, inversion->node2, plan, detailed, level);
+		switch (plan_format)
+		{
+			case isc_info_sql_plan_format_plain:
+				break;
+				
+			case isc_info_sql_plan_format_explain_legacy:
+				plan += "Bitmap Or";
+				break;
+				
+			case isc_info_sql_plan_format_explain_xml:
+				plan += "<Node Operation=\"Bitmap Or\">";
+				break;
+				
+			default:
+				fb_assert(false);			
+		}
+
+		printInversion(tdbb, inversion->node1, plan, plan_format, level);
+		printInversion(tdbb, inversion->node2, plan, plan_format, level);
+		
+		if (plan_format == isc_info_sql_plan_format_explain_xml)
+			plan += printIndent(level, plan_format) + "</Node>";
 		break;
 
 	case InversionNode::TYPE_DBKEY:
-		if (detailed)
-			plan += "DBKEY";
+		switch (plan_format)
+		{
+			case isc_info_sql_plan_format_plain:
+				plan += "DBKEY";
+				break;
+				
+			case isc_info_sql_plan_format_explain_legacy:
+				plan += "DBKEY";
+				break;
+				
+			case isc_info_sql_plan_format_explain_xml:
+				plan += "<Node Operation=\"DBKEY\">" +
+					printIndent(level, plan_format) + "</Node>";
+				break;
+				
+			default:
+				fb_assert(false);			
+		}	
 		break;
 
 	case InversionNode::TYPE_INDEX:
@@ -127,62 +217,152 @@ void RecordSource::printInversion(thread_db* tdbb, const InversionNode* inversio
 			else
 				indexName.printf("<index id %d>", retrieval->irb_index + 1);
 
-			if (detailed)
+			switch (plan_format)
 			{
-				if (!navigation)
-					plan += "Bitmap" + printIndent(++level);
-
-				const index_desc& idx = retrieval->irb_desc;
-				const bool uniqueIdx = (idx.idx_flags & idx_unique);
-				const USHORT segCount = idx.idx_count;
-
-				const USHORT minSegs = MIN(retrieval->irb_lower_count, retrieval->irb_upper_count);
-				const USHORT maxSegs = MAX(retrieval->irb_lower_count, retrieval->irb_upper_count);
-
-				const bool equality = (retrieval->irb_generic & irb_equality);
-				const bool partial = (retrieval->irb_generic & irb_partial);
-
-				const bool fullscan = (maxSegs == 0);
-				const bool unique = uniqueIdx && equality && (minSegs == segCount);
-
-				string bounds;
-				if (!unique && !fullscan)
-				{
-					if (retrieval->irb_lower_count && retrieval->irb_upper_count)
+				case isc_info_sql_plan_format_plain:
+					plan += (plan.hasData() ? ", " : "") + printName(tdbb, indexName.c_str(), false);
+					break;
+					
+				case isc_info_sql_plan_format_explain_legacy:
 					{
-						if (equality)
+						if (!navigation)
+							plan += "Bitmap" + printIndent(++level, plan_format);
+
+						const index_desc& idx = retrieval->irb_desc;
+						const bool uniqueIdx = (idx.idx_flags & idx_unique);
+						const USHORT segCount = idx.idx_count;
+
+						const USHORT minSegs = MIN(retrieval->irb_lower_count, retrieval->irb_upper_count);
+						const USHORT maxSegs = MAX(retrieval->irb_lower_count, retrieval->irb_upper_count);
+
+						const bool equality = (retrieval->irb_generic & irb_equality);
+						const bool partial = (retrieval->irb_generic & irb_partial);
+
+						const bool fullscan = (maxSegs == 0);
+						const bool unique = uniqueIdx && equality && (minSegs == segCount);
+
+						string bounds;
+						if (!unique && !fullscan)
 						{
-							if (partial)
-								bounds.printf(" (partial match: %d/%d)", maxSegs, segCount);
-							else
-								bounds.printf(" (full match)");
+							if (retrieval->irb_lower_count && retrieval->irb_upper_count)
+							{
+								if (equality)
+								{
+									if (partial)
+										bounds.printf(" (partial match: %d/%d)", maxSegs, segCount);
+									else
+										bounds.printf(" (full match)");
+								}
+								else
+								{
+									bounds.printf(" (lower bound: %d/%d, upper bound: %d/%d)",
+												  retrieval->irb_lower_count, segCount,
+												  retrieval->irb_upper_count, segCount);
+								}
+							}
+							else if (retrieval->irb_lower_count)
+							{
+								bounds.printf(" (lower bound: %d/%d)",
+											  retrieval->irb_lower_count, segCount);
+							}
+							else if (retrieval->irb_upper_count)
+							{
+								bounds.printf(" (upper bound: %d/%d)",
+											  retrieval->irb_upper_count, segCount);
+							}
 						}
-						else
-						{
-							bounds.printf(" (lower bound: %d/%d, upper bound: %d/%d)",
-										  retrieval->irb_lower_count, segCount,
-										  retrieval->irb_upper_count, segCount);
-						}
-					}
-					else if (retrieval->irb_lower_count)
-					{
-						bounds.printf(" (lower bound: %d/%d)",
-									  retrieval->irb_lower_count, segCount);
-					}
-					else if (retrieval->irb_upper_count)
-					{
-						bounds.printf(" (upper bound: %d/%d)",
-									  retrieval->irb_upper_count, segCount);
-					}
-				}
 
-				plan += "Index " + printName(tdbb, indexName.c_str()) +
-					(fullscan ? " Full" : unique ? " Unique" : " Range") + " Scan" + bounds;
-			}
-			else
-			{
-				plan += (plan.hasData() ? ", " : "") + printName(tdbb, indexName.c_str(), false);
-			}
+						plan += "Index " + printName(tdbb, indexName.c_str()) +
+							(fullscan ? " Full" : unique ? " Unique" : " Range") + " Scan" + bounds;
+						break;
+					}	
+					
+				case isc_info_sql_plan_format_explain_xml:
+					{
+						const int prevLevel = level;
+						
+						if (!navigation)
+							plan += "<Node Operation=\"Bitmap\">" + printIndent(++level, plan_format);
+
+						const index_desc& idx = retrieval->irb_desc;
+						const bool uniqueIdx = (idx.idx_flags & idx_unique);
+						const USHORT segCount = idx.idx_count;
+
+						const USHORT minSegs = MIN(retrieval->irb_lower_count, retrieval->irb_upper_count);
+						const USHORT maxSegs = MAX(retrieval->irb_lower_count, retrieval->irb_upper_count);
+
+						const bool equality = (retrieval->irb_generic & irb_equality);
+						const bool partial = (retrieval->irb_generic & irb_partial);
+
+						const bool fullscan = (maxSegs == 0);
+						const bool unique = uniqueIdx && equality && (minSegs == segCount);
+
+						string bounds;
+						
+						if (!unique && !fullscan)
+						{
+							if (retrieval->irb_lower_count && retrieval->irb_upper_count)
+							{
+								if (equality)
+								{
+									if (partial)
+										bounds.printf((printIndent(level, plan_format) + "<Match>partial: %d/%d</Match>)").c_str(), maxSegs, segCount);
+									else
+										bounds.printf((printIndent(level, plan_format) + "<Match>full</Match>").c_str());
+								}
+								else
+								{
+									bounds.printf(
+										(
+											printIndent(level, plan_format) +"<Bounds>" +
+											printIndent(level+1, plan_format) + "<lower_bound>%d/%d</lower_bound>" +
+											printIndent(level+1, plan_format) + "<upper_bound>%d/%d</upper_bound>" +
+											printIndent(level, plan_format) + "</Bounds>"
+										).c_str(),
+										retrieval->irb_lower_count,
+										segCount,
+										retrieval->irb_upper_count,
+										segCount
+									);
+								}
+							}
+							else if (retrieval->irb_lower_count)
+							{
+								bounds.printf(
+									(
+										printIndent(level, plan_format) + "<Bounds>" +
+										printIndent(level+1, plan_format) + "<lower_bound>%d/%d</lower_bound>" +
+										printIndent(level, plan_format) + "</Bounds>"
+									).c_str(),
+									retrieval->irb_lower_count,
+									segCount
+								);
+							}
+							else if (retrieval->irb_upper_count)
+							{
+								bounds.printf(
+									(
+										printIndent(level, plan_format) + "<Bounds>" + 
+										printIndent(level+1, plan_format) + "<upper_bound>%d/%d</upper_bound>" + 
+										printIndent(level, plan_format) + "</Bounds>"
+									).c_str(),
+									retrieval->irb_upper_count,
+									segCount
+								);
+							}
+						}
+
+						plan += "<Index>" + printName(tdbb, indexName.c_str(), false) + "</Index>" +
+							printIndent(level, plan_format) +
+							"<Scan>" + (fullscan ? "Full" : unique ? "Unique" : "Range") + "</Scan>" + 
+							(bounds!="" ? printIndent(level, plan_format) + bounds : "") +
+							printIndent(prevLevel, plan_format) + "</Node>";
+						break;
+					}
+					
+				default:
+					fb_assert(false);			
+			}			
 		}
 		break;
 
