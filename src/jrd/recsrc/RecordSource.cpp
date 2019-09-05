@@ -355,7 +355,7 @@ void RecordSource::printInversion(thread_db* tdbb, const InversionNode* inversio
 						plan += "<Index>" + printName(tdbb, indexName.c_str(), false) + "</Index>" +
 							printIndent(level, plan_format) +
 							"<Scan>" + (fullscan ? "Full" : unique ? "Unique" : "Range") + "</Scan>" + 
-							(bounds!="" ? printIndent(level, plan_format) + bounds : "") +
+							(bounds!="" ? bounds : "") +
 							printIndent(prevLevel, plan_format) + "</Node>";
 						break;
 					}
