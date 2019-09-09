@@ -456,7 +456,7 @@ string OPT_get_plan(thread_db* tdbb, const jrd_req* request, isc_info_sql_plan_f
 					break;
 					
 				case isc_info_sql_plan_format_explain_xml:
-					plan += "\n<Select_Expression>";
+					plan += "\n<Select_Expression xmlns=\"http://www.firebirdsql.org\">"; 
 					break;
 				
 				default:
