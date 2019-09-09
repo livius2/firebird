@@ -146,7 +146,7 @@ void SortedStream::print(thread_db* tdbb, string& plan,
 							  m_map->length, m_map->keyLength);
 
 				plan += printIndent(++level, plan_format) +
-					"<Node Operation=\"" +  ((m_map->flags & FLAG_PROJECT) ? "Unique Sort" : "Sort") + extras + "\">";
+					"<Node Operation=\"" +  ((m_map->flags & FLAG_PROJECT) ? "Unique Sort" : "Sort") + "\"" + extras + ">";
 
 				m_next->print(tdbb, plan, plan_format, level);
 
