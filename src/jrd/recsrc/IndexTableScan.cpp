@@ -288,9 +288,9 @@ void IndexTableScan::print(thread_db* tdbb, string& plan, isc_info_sql_plan_form
 			
 		case isc_info_sql_plan_format_explain_xml:
 			{
-				const string l_alias = printName(tdbb, m_alias, true);
-				plan += printIndent(++level, plan_format) + "<Table Alias=" + l_alias + " Access=\"By ID\">" +
-					printName(tdbb, m_relation->rel_name.c_str(), false) + "</Table>";
+				const string l_alias = printName(tdbb, m_alias, false);
+				plan += printIndent(++level, plan_format) + "<Table Alias=\"" + escapeXml(l_alias) + "\" Access=\"By ID\">" +
+					escapeXml(printName(tdbb, m_relation->rel_name.c_str(), false)) + "</Table>";
 
 				printInversion(tdbb, m_index, plan, plan_format, --level, true);
 

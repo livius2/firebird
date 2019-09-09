@@ -112,6 +112,44 @@ string RecordSource::printIndent(unsigned level, isc_info_sql_plan_format plan_f
 	}
 }
 
+string RecordSource::escapeXml(const string s)
+{
+	auto end = s.end();
+	string result;
+	for (auto i = s.begin(); i != end; ++i)
+	{
+		switch (*i)
+		{
+			case '<': 
+				result += "&lt;";
+				break;
+				
+			case '>':
+				result += "&gt;";
+				break;
+				
+			case '"':
+				result += "&quot;";
+				break;
+			
+			case '\'':
+				result += "&apos;";
+				break;
+				
+			case '&':
+				result += "&amp;";
+				break;
+			
+			default:
+				result += *i;
+				break;
+			
+		}
+	}
+	
+	return result;
+}
+
 void RecordSource::printInversion(thread_db* tdbb, const InversionNode* inversion,
 								  string& plan, isc_info_sql_plan_format plan_format, unsigned level, bool navigation)
 {

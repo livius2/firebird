@@ -107,6 +107,7 @@ namespace Jrd
 										  const Firebird::string& alias);
 
 		static Firebird::string printIndent(unsigned level, isc_info_sql_plan_format plan_format);
+		static Firebird::string escapeXml(const Firebird::string s);
 		static void printInversion(thread_db* tdbb, const InversionNode* inversion,
 								   Firebird::string& plan, isc_info_sql_plan_format plan_format,
 								   unsigned level, bool navigation = false);

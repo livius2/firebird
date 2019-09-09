@@ -264,7 +264,7 @@ void ProcedureScan::print(thread_db* tdbb, string& plan, isc_info_sql_plan_forma
 			
 		case isc_info_sql_plan_format_explain_xml:	
 			plan += printIndent(++level, plan_format) + "<Procedure>" +
-				printName(tdbb, m_procedure->getName().toString(), m_alias) + "</Procedure>" +
+				escapeXml(printName(tdbb, m_procedure->getName().toString(), m_alias)) + "</Procedure>" +
 				printIndent(++level, plan_format) + "<Node Operation=\"Scan\">" +
 				printIndent(level, plan_format) + "</Node>";
 			break;
