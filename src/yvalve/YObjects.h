@@ -443,7 +443,8 @@ public:
 		unsigned int itemsLength, const unsigned char* items,
 		unsigned int bufferLength, unsigned char* buffer);
 	unsigned getType(Firebird::CheckStatusWrapper* status);
-	const char* getPlan(Firebird::CheckStatusWrapper* status, isc_info_sql_plan_format plan_format);
+	const char* getPlan(Firebird::CheckStatusWrapper* status, FB_BOOLEAN detailed);
+	const char* getFormattedPlan(Firebird::CheckStatusWrapper* status, isc_info_sql_plan_format plan_format);
 	ISC_UINT64 getAffectedRecords(Firebird::CheckStatusWrapper* status);
 	Firebird::IMessageMetadata* getInputMetadata(Firebird::CheckStatusWrapper* status);
 	Firebird::IMessageMetadata* getOutputMetadata(Firebird::CheckStatusWrapper* status);

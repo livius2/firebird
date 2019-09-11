@@ -457,7 +457,7 @@ string OPT_get_plan(thread_db* tdbb, const jrd_req* request, isc_info_sql_plan_f
 					
 				case isc_info_sql_plan_format_explain_xml:
 					plan += "\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
-					plan += "\n<Select_Expression xmlns=\"http://www.firebirdsql.org\">"; 
+					plan += "\n<SelectExpression xmlns=\"https://www.firebirdsql.org/2019/ExecutionPlan\">"; 
 					break;
 				
 				default:
@@ -465,7 +465,7 @@ string OPT_get_plan(thread_db* tdbb, const jrd_req* request, isc_info_sql_plan_f
 			}
 			fors[i]->print(tdbb, plan, plan_format, 0);
 			if (plan_format == isc_info_sql_plan_format_explain_xml)
-				plan += "\n</Select_Expression>";
+				plan += "\n</SelectExpression>";
 		}
 	}
 

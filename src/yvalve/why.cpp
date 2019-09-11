@@ -4247,7 +4247,12 @@ unsigned YStatement::getFlags(CheckStatusWrapper* status)
 	return 0;
 }
 
-const char* YStatement::getPlan(CheckStatusWrapper* status, isc_info_sql_plan_format plan_format)
+const char* YStatement::getPlan(CheckStatusWrapper* status, FB_BOOLEAN detailed)
+{
+	return getFormattedPlan(status, detailed ? isc_info_sql_plan_format_explain_legacy : isc_info_sql_plan_format_plain);
+}
+
+const char* YStatement::getFormattedPlan(CheckStatusWrapper* status, isc_info_sql_plan_format plan_format)
 {
 	try
 	{

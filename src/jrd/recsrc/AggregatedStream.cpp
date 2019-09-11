@@ -380,7 +380,7 @@ void AggregatedStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_fo
 			break;
 			
 		case isc_info_sql_plan_format_explain_xml:
-			plan += printIndent(++level, plan_format) + "<Node Operation=\"Aggregate\">";
+			plan += printIndent(++level, plan_format) + "<Node operation=\"Aggregate\">";
 			break;
 			
 		default:

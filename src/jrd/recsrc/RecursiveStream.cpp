@@ -275,7 +275,7 @@ void RecursiveStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_for
 			
 		case isc_info_sql_plan_format_explain_xml:
 			{
-				plan += printIndent(++level, plan_format) + "<Node Operation=\"Recursion\">";
+				plan += printIndent(++level, plan_format) + "<Node operation=\"Recursion\">";
 				
 				m_root->print(tdbb, plan, plan_format, level);
 				m_inner->print(tdbb, plan, plan_format, level);

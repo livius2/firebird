@@ -1611,7 +1611,7 @@ namespace Firebird
 		{
 			void (CLOOP_CARG *getInfo)(IStatement* self, IStatus* status, unsigned itemsLength, const unsigned char* items, unsigned bufferLength, unsigned char* buffer) throw();
 			unsigned (CLOOP_CARG *getType)(IStatement* self, IStatus* status) throw();
-			const char* (CLOOP_CARG *getPlan)(IStatement* self, IStatus* status, isc_info_sql_plan_format plan_format) throw();
+			const char* (CLOOP_CARG *getPlan)(IStatement* self, IStatus* status, FB_BOOLEAN detailed) throw();
 			ISC_UINT64 (CLOOP_CARG *getAffectedRecords)(IStatement* self, IStatus* status) throw();
 			IMessageMetadata* (CLOOP_CARG *getInputMetadata)(IStatement* self, IStatus* status) throw();
 			IMessageMetadata* (CLOOP_CARG *getOutputMetadata)(IStatement* self, IStatus* status) throw();
@@ -1623,6 +1623,7 @@ namespace Firebird
 			unsigned (CLOOP_CARG *getTimeout)(IStatement* self, IStatus* status) throw();
 			void (CLOOP_CARG *setTimeout)(IStatement* self, IStatus* status, unsigned timeOut) throw();
 			IBatch* (CLOOP_CARG *createBatch)(IStatement* self, IStatus* status, IMessageMetadata* inMetadata, unsigned parLength, const unsigned char* par) throw();
+			const char* (CLOOP_CARG *getFormattedPlan)(IStatement* self, IStatus* status, isc_info_sql_plan_format plan_format) throw();
 		};
 
 	protected:
@@ -1668,10 +1669,18 @@ namespace Firebird
 			return ret;
 		}
 
-		template <typename StatusType> const char* getPlan(StatusType* status, isc_info_sql_plan_format plan_format)
+		template <typename StatusType> const char* getPlan(StatusType* status, FB_BOOLEAN detailed)
 		{
 			StatusType::clearException(status);
-			const char* ret = static_cast<VTable*>(this->cloopVTable)->getPlan(this, status, plan_format);
+			const char* ret = static_cast<VTable*>(this->cloopVTable)->getFormattedPlan(this, status, detailed ? isc_info_sql_plan_format_explain_legacy : isc_info_sql_plan_format_plain);
+			StatusType::checkException(status);
+			return ret;
+		}
+		
+		template <typename StatusType> const char* getFormattedPlan(StatusType* status, isc_info_sql_plan_format plan_format)
+		{
+			StatusType::clearException(status);
+			const char* ret = static_cast<VTable*>(this->cloopVTable)->getFormattedPlan(this, status, plan_format);
 			StatusType::checkException(status);
 			return ret;
 		}
@@ -4769,7 +4778,7 @@ namespace Firebird
 			ITraceParams* (CLOOP_CARG *getInputs)(ITraceSQLStatement* self) throw();
 			const char* (CLOOP_CARG *getTextUTF8)(ITraceSQLStatement* self) throw();
 			const char* (CLOOP_CARG *getExplainedPlan)(ITraceSQLStatement* self) throw();
-			const char* (CLOOP_CARG *getExplainedPlanXml)(ITraceSQLStatement* self) throw();
+			const char* (CLOOP_CARG *getFormattedPlan)(ITraceSQLStatement* self, isc_info_sql_plan_format plan_format) throw();
 		};
 
 	protected:
@@ -4793,8 +4802,7 @@ namespace Firebird
 
 		const char* getPlan()
 		{
-			const char* ret = static_cast<VTable*>(this->cloopVTable)->getPlan(this);
-			return ret;
+			return getFormattedPlan(isc_info_sql_plan_format_plain);
 		}
 
 		ITraceParams* getInputs()
@@ -4811,13 +4819,12 @@ namespace Firebird
 
 		const char* getExplainedPlan()
 		{
-			const char* ret = static_cast<VTable*>(this->cloopVTable)->getExplainedPlan(this);
-			return ret;
+			return getFormattedPlan(isc_info_sql_plan_format_explain_legacy);
 		}
 		
-		const char* getExplainedPlanXml()
+		const char* getFormattedPlan(isc_info_sql_plan_format plan_format)
 		{
-			const char* ret = static_cast<VTable*>(this->cloopVTable)->getExplainedPlanXml(this);
+			const char* ret = static_cast<VTable*>(this->cloopVTable)->getFormattedPlan(this, plan_format);
 			return ret;
 		}
 	};
@@ -9157,6 +9164,7 @@ namespace Firebird
 					this->getTimeout = &Name::cloopgetTimeoutDispatcher;
 					this->setTimeout = &Name::cloopsetTimeoutDispatcher;
 					this->createBatch = &Name::cloopcreateBatchDispatcher;
+					this->getFormattedPlan = &Name::cloopgetFormattedPlanDispatcher;
 				}
 			} vTable;
 
@@ -9192,13 +9200,28 @@ namespace Firebird
 			}
 		}
 
-		static const char* CLOOP_CARG cloopgetPlanDispatcher(IStatement* self, IStatus* status, isc_info_sql_plan_format plan_format) throw()
+		static const char* CLOOP_CARG cloopgetPlanDispatcher(IStatement* self, IStatus* status, FB_BOOLEAN detailed) throw()
 		{
 			StatusType status2(status);
 
 			try
 			{
-				return static_cast<Name*>(self)->Name::getPlan(&status2, plan_format);
+				return static_cast<Name*>(self)->Name::getFormattedPlan(&status2, detailed ? isc_info_sql_plan_format_explain_legacy : isc_info_sql_plan_format_plain);
+			}
+			catch (...)
+			{
+				StatusType::catchException(&status2);
+				return static_cast<const char*>(0);
+			}
+		}
+
+		static const char* CLOOP_CARG cloopgetFormattedPlanDispatcher(IStatement* self, IStatus* status, isc_info_sql_plan_format plan_format) throw()
+		{
+			StatusType status2(status);
+
+			try
+			{
+				return static_cast<Name*>(self)->Name::getFormattedPlan(&status2, plan_format);
 			}
 			catch (...)
 			{
@@ -9410,7 +9433,7 @@ namespace Firebird
 
 		virtual void getInfo(StatusType* status, unsigned itemsLength, const unsigned char* items, unsigned bufferLength, unsigned char* buffer) = 0;
 		virtual unsigned getType(StatusType* status) = 0;
-		virtual const char* getPlan(StatusType* status, isc_info_sql_plan_format plan_format) = 0;
+		virtual const char* getPlan(StatusType* status, FB_BOOLEAN detailed) = 0;
 		virtual ISC_UINT64 getAffectedRecords(StatusType* status) = 0;
 		virtual IMessageMetadata* getInputMetadata(StatusType* status) = 0;
 		virtual IMessageMetadata* getOutputMetadata(StatusType* status) = 0;
@@ -9422,6 +9445,7 @@ namespace Firebird
 		virtual unsigned getTimeout(StatusType* status) = 0;
 		virtual void setTimeout(StatusType* status, unsigned timeOut) = 0;
 		virtual IBatch* createBatch(StatusType* status, IMessageMetadata* inMetadata, unsigned parLength, const unsigned char* par) = 0;
+		virtual const char* getFormattedPlan(StatusType* status, isc_info_sql_plan_format plan_format) = 0;
 	};
 
 	template <typename Name, typename StatusType, typename Base>
@@ -15744,7 +15768,7 @@ namespace Firebird
 					this->getInputs = &Name::cloopgetInputsDispatcher;
 					this->getTextUTF8 = &Name::cloopgetTextUTF8Dispatcher;
 					this->getExplainedPlan = &Name::cloopgetExplainedPlanDispatcher;
-					this->getExplainedPlanXml = &Name::cloopgetExplainedPlanXmlDispatcher;
+					this->getFormattedPlan = &Name::cloopgetFormattedPlanDispatcher;
 				}
 			} vTable;
 
@@ -15816,11 +15840,11 @@ namespace Firebird
 			}
 		}
 		
-		static const char* CLOOP_CARG cloopgetExplainedPlanXmlDispatcher(ITraceSQLStatement* self) throw()
+		static const char* CLOOP_CARG cloopgetFormattedPlanDispatcher(ITraceSQLStatement* self, isc_info_sql_plan_format plan_format) throw()
 		{
 			try
 			{
-				return static_cast<Name*>(self)->Name::getExplainedPlanXml();
+				return static_cast<Name*>(self)->Name::getFormattedPlan(plan_format);
 			}
 			catch (...)
 			{
@@ -15874,7 +15898,7 @@ namespace Firebird
 		virtual ITraceParams* getInputs() = 0;
 		virtual const char* getTextUTF8() = 0;
 		virtual const char* getExplainedPlan() = 0;
-		virtual const char* getExplainedPlanXml() = 0;
+		virtual const char* getFormattedPlan(isc_info_sql_plan_format plan_format) = 0;
 	};
 
 	template <typename Name, typename StatusType, typename Base>

@@ -133,9 +133,9 @@ void VirtualTableScan::print(thread_db* tdbb, string& plan, isc_info_sql_plan_fo
 		case isc_info_sql_plan_format_explain_xml:
 			{
 				const string l_alias = printName(tdbb, m_alias, false);
-				plan += printIndent(++level, plan_format) + "<Table Alias=\"" + escapeXml(l_alias) + "\">" +
-					escapeXml(printName(tdbb, m_relation->rel_name.c_str(), false)) + "</Table>" +
-					printIndent(++level, plan_format) + "<Node Operation=\"Full Scan\">" +
+				plan += printIndent(level, plan_format) + "<Node operation=\"Full Scan\">" +
+					printIndent(++level, plan_format) + "<Table alias=\"" + escapeXml(l_alias) + "\">" +
+					escapeXml(printName(tdbb, m_relation->rel_name.c_str(), false)) + "</Table>" +					
 					printIndent(level, plan_format) + "</Node>";
 				break;
 			}

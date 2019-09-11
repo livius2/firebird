@@ -155,7 +155,7 @@ void SingularStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_form
 			break;
 			
 		case isc_info_sql_plan_format_explain_xml:
-			plan += printIndent(++level, plan_format) + "<Node Operation=\"Singularity Check\">";
+			plan += printIndent(++level, plan_format) + "<Node operation=\"Singularity Check\">";
 			break;
 			
 		default:

@@ -132,7 +132,7 @@ void SkipRowsStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_form
 				//Impure* const impure = request->getImpure<Impure>(m_impure);
 				string extras;
 				//extras.printf(" SkipRows=\"%" ULONGFORMAT"\"", impure->irsb_count);
-				plan += printIndent(++level, plan_format) + "<Node Operation=\"Skip N Records\"" + extras + ">";
+				plan += printIndent(++level, plan_format) + "<Node operation=\"Skip N Records\"" + extras + ">";
 				break;
 			}
 			

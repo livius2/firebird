@@ -326,9 +326,9 @@ void BufferedStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_form
 		case isc_info_sql_plan_format_explain_xml:
 			{
 				string extras;
-				extras.printf(" RecordLength=\"%" ULONGFORMAT"\"", m_format->fmt_length);
+				extras.printf(" recordLength=\"%" ULONGFORMAT"\"", m_format->fmt_length);
 	 
-				plan += printIndent(++level, plan_format) + "<Node Operation=\"Record Buffer\"" + extras + ">";
+				plan += printIndent(++level, plan_format) + "<Node operation=\"Record Buffer\"" + extras + ">";
 				break;
 			}
 			

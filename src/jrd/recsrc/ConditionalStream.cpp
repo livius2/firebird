@@ -140,7 +140,7 @@ void ConditionalStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_f
 			
 		case isc_info_sql_plan_format_explain_xml:
 			{
-				plan += printIndent(++level, plan_format) + "<Node Operation=\"Condition\">";
+				plan += printIndent(++level, plan_format) + "<Node operation=\"Condition\">";
 				
 				m_first->print(tdbb, plan, plan_format, level);
 				m_second->print(tdbb, plan, plan_format, level);

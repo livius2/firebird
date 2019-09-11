@@ -188,7 +188,7 @@ public:
 	const char* getPlan();
 	const char* getTextUTF8();
 	const char* getExplainedPlan();
-	const char* getExplainedPlanXml();
+	const char* getFormattedPlan(isc_info_sql_plan_format plan_format);
 
 private:
 	class DSQLParamsImpl :
@@ -245,7 +245,7 @@ public:
 	const char* getPlan()		{ return ""; }
 	const char* getTextUTF8();
 	const char* getExplainedPlan()	{ return ""; }
-	const char* getExplainedPlanXml()	{ return ""; }
+	const char* getFormattedPlan(isc_info_sql_plan_format plan_format)	{ return ""; }
 
 private:
 	Firebird::string& m_text;

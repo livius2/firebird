@@ -367,7 +367,7 @@ void MergeJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format pl
 			
 		case isc_info_sql_plan_format_explain_xml:
 			{
-				plan += printIndent(++level, plan_format) + "<Node Operation=\"Merge Join\" JoinType=\"Inner\">";
+				plan += printIndent(++level, plan_format) + "<Node operation=\"Merge Join\" joinType=\"Inner\">";
 
 				for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
 					m_args[i]->print(tdbb, plan, plan_format, level);

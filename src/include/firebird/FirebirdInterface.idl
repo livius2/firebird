@@ -36,6 +36,7 @@ typedef FB_DEC16;
 typedef FB_DEC34;
 typedef isc_tr_handle;
 typedef isc_stmt_handle;
+typedef isc_info_sql_plan_format;
 
 // Versioned interface - base for all FB interfaces
 interface Versioned
@@ -449,7 +450,7 @@ interface Statement : ReferenceCounted
 								 uint itemsLength, const uchar* items,
 								 uint bufferLength, uchar* buffer);
 	uint getType(Status status);
-	const string getPlan(Status status, isc_info_sql_plan_format plan_format);
+	const string getPlan(Status status, boolean detailed);
 	uint64 getAffectedRecords(Status status);
 	MessageMetadata getInputMetadata(Status status);
 	MessageMetadata getOutputMetadata(Status status);
@@ -473,6 +474,8 @@ version:	// 3.0 => 4.0
 	Pipe createPipe(Status status, Transaction transaction, MessageMetadata inMetadata,
 		void* inBuffer, MessageMetadata outMetadata, uint parLength, const uchar* par);
 	*/
+	
+	const string getFormattedPlan(Status status, isc_info_sql_plan_format plan_format);
 }
 
 interface Batch : ReferenceCounted
@@ -1219,7 +1222,10 @@ interface TraceSQLStatement : TraceStatement
 	TraceParams getInputs();
 	const string getTextUTF8();
 	const string getExplainedPlan();
-	const string getExplainedPlanXml();
+	const string getFormattedPlan();
+	
+version:
+	const string getFormattedPlan();
 }
 
 interface TraceBLRStatement : TraceStatement

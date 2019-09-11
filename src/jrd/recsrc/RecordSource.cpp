@@ -183,7 +183,7 @@ void RecordSource::printInversion(thread_db* tdbb, const InversionNode* inversio
 				break;
 				
 			case isc_info_sql_plan_format_explain_xml:
-				plan += "<Node Operation=\"Bitmap And\">";
+				plan += "<Node operation=\"Bitmap And\">";
 				break;
 				
 			default:
@@ -209,7 +209,7 @@ void RecordSource::printInversion(thread_db* tdbb, const InversionNode* inversio
 				break;
 				
 			case isc_info_sql_plan_format_explain_xml:
-				plan += "<Node Operation=\"Bitmap Or\">";
+				plan += "<Node operation=\"Bitmap Or\">";
 				break;
 				
 			default:
@@ -235,7 +235,7 @@ void RecordSource::printInversion(thread_db* tdbb, const InversionNode* inversio
 				break;
 				
 			case isc_info_sql_plan_format_explain_xml:
-				plan += "<Node Operation=\"DBKEY\">" +
+				plan += "<Node operation=\"DBKEY\">" +
 					printIndent(level, plan_format) + "</Node>";
 				break;
 				
@@ -320,7 +320,7 @@ void RecordSource::printInversion(thread_db* tdbb, const InversionNode* inversio
 						const int prevLevel = level;
 						
 						if (!navigation)
-							plan += "<Node Operation=\"Bitmap\">" + printIndent(++level, plan_format);
+							plan += "<Node operation=\"Bitmap\">" + printIndent(++level, plan_format);
 
 						const index_desc& idx = retrieval->irb_desc;
 						const bool uniqueIdx = (idx.idx_flags & idx_unique);
@@ -344,17 +344,17 @@ void RecordSource::printInversion(thread_db* tdbb, const InversionNode* inversio
 								if (equality)
 								{
 									if (partial)
-										bounds.printf((printIndent(level, plan_format) + "<Match>partial: %d/%d</Match>)").c_str(), maxSegs, segCount);
+										bounds.printf((printIndent(level, plan_format) + "<Match>Partial: %d/%d</Match>)").c_str(), maxSegs, segCount);
 									else
-										bounds.printf((printIndent(level, plan_format) + "<Match>full</Match>").c_str());
+										bounds.printf((printIndent(level, plan_format) + "<Match>Full</Match>").c_str());
 								}
 								else
 								{
 									bounds.printf(
 										(
 											printIndent(level, plan_format) +"<Bounds>" +
-											printIndent(level+1, plan_format) + "<lower_bound>%d/%d</lower_bound>" +
-											printIndent(level+1, plan_format) + "<upper_bound>%d/%d</upper_bound>" +
+											printIndent(level+1, plan_format) + "<LowerBound>%d/%d</LowerBound>" +
+											printIndent(level+1, plan_format) + "<UpperBound>%d/%d</UpperBound>" +
 											printIndent(level, plan_format) + "</Bounds>"
 										).c_str(),
 										retrieval->irb_lower_count,
@@ -369,7 +369,7 @@ void RecordSource::printInversion(thread_db* tdbb, const InversionNode* inversio
 								bounds.printf(
 									(
 										printIndent(level, plan_format) + "<Bounds>" +
-										printIndent(level+1, plan_format) + "<lower_bound>%d/%d</lower_bound>" +
+										printIndent(level+1, plan_format) + "<LowerBound>%d/%d</LowerBound>" +
 										printIndent(level, plan_format) + "</Bounds>"
 									).c_str(),
 									retrieval->irb_lower_count,
@@ -381,7 +381,7 @@ void RecordSource::printInversion(thread_db* tdbb, const InversionNode* inversio
 								bounds.printf(
 									(
 										printIndent(level, plan_format) + "<Bounds>" + 
-										printIndent(level+1, plan_format) + "<upper_bound>%d/%d</upper_bound>" + 
+										printIndent(level+1, plan_format) + "<UpperBound>%d/%d</UpperBound>" + 
 										printIndent(level, plan_format) + "</Bounds>"
 									).c_str(),
 									retrieval->irb_upper_count,

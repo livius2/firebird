@@ -115,7 +115,7 @@ void FilteredStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_form
 			break;
 			
 		case isc_info_sql_plan_format_explain_xml:
-			plan += printIndent(++level, plan_format) + "<Node Operation=\"Filter\">";
+			plan += printIndent(++level, plan_format) + "<Node operation=\"Filter\">";
 			break;
 			
 		default:

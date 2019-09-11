@@ -136,7 +136,7 @@ void FullOuterJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_forma
 			
 		case isc_info_sql_plan_format_explain_xml:
 			{
-				plan += printIndent(++level, plan_format) + "<Node Operation=\"Full Join\" JoinType=\"Outer\">";
+				plan += printIndent(++level, plan_format) + "<Node operation=\"Full Join\" joinType=\"Outer\">";
 				m_arg1->print(tdbb, plan, plan_format, level);
 				m_arg2->print(tdbb, plan, plan_format, level);
 				plan += printIndent(level, plan_format) + "</Node>";

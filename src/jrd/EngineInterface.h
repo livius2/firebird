@@ -265,7 +265,7 @@ public:
 	Firebird::IMessageMetadata* getOutputMetadata(Firebird::CheckStatusWrapper* userStatus);
 	Firebird::IMessageMetadata* getInputMetadata(Firebird::CheckStatusWrapper* userStatus);
 	unsigned getType(Firebird::CheckStatusWrapper* status);
-    const char* getPlan(Firebird::CheckStatusWrapper* status, isc_info_sql_plan_format plan_format);
+    const char* getPlan(Firebird::CheckStatusWrapper* status, FB_BOOLEAN detailed);
 	Firebird::ITransaction* execute(Firebird::CheckStatusWrapper* status,
 		Firebird::ITransaction* transaction, Firebird::IMessageMetadata* inMetadata, void* inBuffer,
 		Firebird::IMessageMetadata* outMetadata, void* outBuffer);
@@ -279,7 +279,8 @@ public:
 	void setTimeout(Firebird::CheckStatusWrapper* status, unsigned int timeOut);
 	JBatch* createBatch(Firebird::CheckStatusWrapper* status, Firebird::IMessageMetadata* inMetadata,
 		unsigned parLength, const unsigned char* par);
-
+	const char* getFormattedPlan(Firebird::CheckStatusWrapper* status, isc_info_sql_plan_format plan_format);
+	
 public:
 	JStatement(dsql_req* handle, StableAttachmentPart* sa, Firebird::Array<UCHAR>& meta);
 

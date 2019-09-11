@@ -204,9 +204,9 @@ const char* TraceSQLStatementImpl::getExplainedPlan()
 	return m_plan.c_str();
 }
 
-const char* TraceSQLStatementImpl::getExplainedPlanXml()
+const char* TraceSQLStatementImpl::getFormattedPlan(isc_info_sql_plan_format plan_format)
 {
-	fillPlan(isc_info_sql_plan_format_explain_xml);
+	fillPlan(plan_format);
 	return m_plan.c_str();
 }
 

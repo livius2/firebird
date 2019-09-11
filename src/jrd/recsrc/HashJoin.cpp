@@ -444,7 +444,7 @@ void HashJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format pla
 			
 		case isc_info_sql_plan_format_explain_xml:
 			{
-				plan += printIndent(++level, plan_format) + "<Node Operation=\"Hash Join\" JoinType=\"Inner\">";
+				plan += printIndent(++level, plan_format) + "<Node operation=\"Hash Join\" joinType=\"Inner\">";
 
 				m_leader.source->print(tdbb, plan, plan_format, level);
 

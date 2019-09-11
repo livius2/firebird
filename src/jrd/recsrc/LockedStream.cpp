@@ -115,7 +115,7 @@ void LockedStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format
 			break;
 			
 		case isc_info_sql_plan_format_explain_xml:
-			plan += printIndent(++level, plan_format) + "<Node Operation=\"Write Lock\">";
+			plan += printIndent(++level, plan_format) + "<Node operation=\"Write Lock\">";
 			break;
 			
 		default:

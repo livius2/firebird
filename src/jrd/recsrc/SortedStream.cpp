@@ -142,11 +142,11 @@ void SortedStream::print(thread_db* tdbb, string& plan,
 		case isc_info_sql_plan_format_explain_xml:
 			{
 				string extras;
-				extras.printf(" RecordLength=\"%" ULONGFORMAT"\" KeyLength=\"%" ULONGFORMAT"\"",
+				extras.printf(" recordLength=\"%" ULONGFORMAT"\" keyLength=\"%" ULONGFORMAT"\"",
 							  m_map->length, m_map->keyLength);
 
 				plan += printIndent(++level, plan_format) +
-					"<Node Operation=\"" +  ((m_map->flags & FLAG_PROJECT) ? "Unique Sort" : "Sort") + "\"" + extras + ">";
+					"<Node operation=\"" +  ((m_map->flags & FLAG_PROJECT) ? "Unique Sort" : "Sort") + "\"" + extras + ">";
 
 				m_next->print(tdbb, plan, plan_format, level);
 

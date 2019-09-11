@@ -168,7 +168,16 @@ unsigned StatementMetadata::getFlags()
 }
 
 // Get statement plan.
-const char* StatementMetadata::getPlan(isc_info_sql_plan_format plan_format)
+const char* StatementMetadata::getPlan(bool detailed)
+{
+	if (detailed)
+		return getFormattedPlan(isc_info_sql_plan_format_explain_legacy);
+	else
+		return getFormattedPlan(isc_info_sql_plan_format_plain);
+}
+
+// Get statement plan.
+const char* StatementMetadata::getFormattedPlan(isc_info_sql_plan_format plan_format)
 {
 	string* plan;
 

@@ -132,7 +132,7 @@ void FirstRowsStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_for
 				string extras;
 				//extras.printf(" LimitRows=\"%" ULONGFORMAT"\"", impure->irsb_count);
 				
-				plan += printIndent(++level, plan_format) + "<Node Operation=\"First N Records\"" + extras + ">";
+				plan += printIndent(++level, plan_format) + "<Node operation=\"First N Records\"" + extras + ">";
 				break;
 			}
 			
