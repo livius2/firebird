@@ -170,10 +170,7 @@ unsigned StatementMetadata::getFlags()
 // Get statement plan.
 const char* StatementMetadata::getPlan(bool detailed)
 {
-	if (detailed)
-		return getFormattedPlan(isc_info_sql_plan_format_explain_legacy);
-	else
-		return getFormattedPlan(isc_info_sql_plan_format_plain);
+	return getFormattedPlan(detailed ? isc_info_sql_plan_format_explain_legacy : isc_info_sql_plan_format_plain);
 }
 
 // Get statement plan.
