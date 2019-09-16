@@ -894,8 +894,8 @@ void WindowedStream::WindowStream::print(thread_db* tdbb, string& plan, isc_info
 			
 		case isc_info_sql_plan_format_explain_xml:
 			{
-				plan += printIndent(level, plan_format) + "<Node operation=\"Window\">" +
-					printIndent(level, plan_format) + "</Node>";
+				plan += printIndent(++level, plan_format) + "<Node operation=\"Window\">" +
+					printIndent(++level, plan_format) + "</Node>";
 				break;
 			}
 			

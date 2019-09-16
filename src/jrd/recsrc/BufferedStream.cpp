@@ -338,7 +338,7 @@ void BufferedStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_form
 
 	m_next->print(tdbb, plan, plan_format, level);
 	
-	if (plan_format == isc_info_sql_explain_plan_xml)
+	if (plan_format == isc_info_sql_plan_format_explain_xml)
 		plan += printIndent(level, plan_format) + "</Node>";
 }
 
