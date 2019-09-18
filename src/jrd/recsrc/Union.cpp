@@ -165,7 +165,7 @@ bool Union::lockRecord(thread_db* tdbb) const
 	return m_args[impure->irsb_count]->lockRecord(tdbb);
 }
 
-void Union::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
+void Union::print(thread_db* tdbb, jrd_req* request, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
 {
 	switch (plan_format)
 	{
@@ -179,7 +179,7 @@ void Union::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_f
 					if (i)
 						plan += ", ";
 
-					m_args[i]->print(tdbb, plan, plan_format, level + 1);
+					m_args[i]->print(tdbb, request, plan, plan_format, level + 1);
 				}
 
 				if (!level)
@@ -192,7 +192,7 @@ void Union::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_f
 				plan += printIndent(++level, plan_format) + (m_args.getCount() == 1 ? "Materialize" : "Union");
 
 				for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
-					m_args[i]->print(tdbb, plan, plan_format, level);
+					m_args[i]->print(tdbb, request, plan, plan_format, level);
 				break;
 			}
 			
@@ -201,7 +201,7 @@ void Union::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_f
 				plan += printIndent(++level, plan_format) + "<Node operation=\"" + (m_args.getCount() == 1 ? "Materialize" : "Union") + "\">";
 
 				for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
-					m_args[i]->print(tdbb, plan, plan_format, level);
+					m_args[i]->print(tdbb, request, plan, plan_format, level);
 
 				plan += printIndent(level, plan_format) + "</Node>";
 				break;

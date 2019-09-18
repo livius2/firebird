@@ -113,7 +113,7 @@ bool FirstRowsStream::lockRecord(thread_db* tdbb) const
 	return m_next->lockRecord(tdbb);
 }
 
-void FirstRowsStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
+void FirstRowsStream::print(thread_db* tdbb, jrd_req* request, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
 {
 	switch (plan_format)
 	{
@@ -126,11 +126,11 @@ void FirstRowsStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_for
 			
 		case isc_info_sql_plan_format_explain_xml:
 			{
-				//do not know how to get limit of rows specified
-				//jrd_req* const request = tdbb->getRequest();
-				//Impure* const impure = request->getImpure<Impure>(m_impure);
+				Impure* const impure = request->getImpure<Impure>(m_impure);
 				string extras;
-				//extras.printf(" LimitRows=\"%" ULONGFORMAT"\"", impure->irsb_count);
+				const dsc* desc = EVL_expr(tdbb, request, m_value);
+				const SINT64 value = (desc && !(request->req_flags & req_null)) ? MOV_get_int64(tdbb, desc, 0) : 0;
+				extras.printf(" limitRows=\"%" ULONGFORMAT"\"", value);
 				
 				plan += printIndent(++level, plan_format) + "<Node operation=\"First N Records\"" + extras + ">";
 				break;
@@ -140,7 +140,7 @@ void FirstRowsStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_for
 			fb_assert(false);			
 	}
 
-	m_next->print(tdbb, plan, plan_format, level);
+	m_next->print(tdbb, request, plan, plan_format, level);
 	
 	if (plan_format == isc_info_sql_plan_format_explain_xml)
 		plan += printIndent(level, plan_format) + "</Node>";

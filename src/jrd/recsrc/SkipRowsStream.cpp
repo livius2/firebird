@@ -114,7 +114,7 @@ bool SkipRowsStream::lockRecord(thread_db* tdbb) const
 	return m_next->lockRecord(tdbb);
 }
 
-void SkipRowsStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
+void SkipRowsStream::print(thread_db* tdbb, jrd_req* request, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
 {
 	switch (plan_format)
 	{
@@ -127,11 +127,13 @@ void SkipRowsStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_form
 			
 		case isc_info_sql_plan_format_explain_xml:
 			{
-				//do not know how to get skip value specified
-				//jrd_req* const request = tdbb->getRequest();
-				//Impure* const impure = request->getImpure<Impure>(m_impure);
+				Impure* const impure = request->getImpure<Impure>(m_impure);				
+				const dsc* desc = EVL_expr(tdbb, request, m_value);
+				const SINT64 value = (desc && !(request->req_flags & req_null)) ? MOV_get_int64(tdbb, desc, 0) : 0;
+
 				string extras;
-				//extras.printf(" SkipRows=\"%" ULONGFORMAT"\"", impure->irsb_count);
+				extras.printf(" skipRows=\"%" ULONGFORMAT"\"", value);
+
 				plan += printIndent(++level, plan_format) + "<Node operation=\"Skip N Records\"" + extras + ">";
 				break;
 			}
@@ -140,7 +142,7 @@ void SkipRowsStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_form
 			fb_assert(false);			
 	}
 
-	m_next->print(tdbb, plan, plan_format, level);
+	m_next->print(tdbb, request, plan, plan_format, level);
 	
 	if (plan_format == isc_info_sql_plan_format_explain_xml)
 		plan += printIndent(level, plan_format) + "</Node>";

@@ -410,7 +410,7 @@ bool HashJoin::lockRecord(thread_db* /*tdbb*/) const
 	return false; // compiler silencer
 }
 
-void HashJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
+void HashJoin::print(thread_db* tdbb, jrd_req* request, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
 {
 	switch (plan_format)
 	{
@@ -418,14 +418,14 @@ void HashJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format pla
 			{
 				level++;
 				plan += "HASH (";
-				m_leader.source->print(tdbb, plan, plan_format, level);
+				m_leader.source->print(tdbb, request, plan, plan_format, level);
 				plan += ", ";
 				for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
 				{
 					if (i)
 						plan += ", ";
 
-					m_args[i].source->print(tdbb, plan, plan_format, level);
+					m_args[i].source->print(tdbb, request, plan, plan_format, level);
 				}
 				plan += ")";		
 				break;
@@ -435,10 +435,10 @@ void HashJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format pla
 			{
 				plan += printIndent(++level, plan_format) + "Hash Join (inner)";
 
-				m_leader.source->print(tdbb, plan, plan_format, level);
+				m_leader.source->print(tdbb, request, plan, plan_format, level);
 
 				for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
-					m_args[i].source->print(tdbb, plan, plan_format, level);
+					m_args[i].source->print(tdbb, request, plan, plan_format, level);
 				break;
 			}
 			
@@ -446,10 +446,10 @@ void HashJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format pla
 			{
 				plan += printIndent(++level, plan_format) + "<Node operation=\"Hash Join\" joinType=\"Inner\">";
 
-				m_leader.source->print(tdbb, plan, plan_format, level);
+				m_leader.source->print(tdbb, request, plan, plan_format, level);
 
 				for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
-					m_args[i].source->print(tdbb, plan, plan_format, level);
+					m_args[i].source->print(tdbb, request, plan, plan_format, level);
 
 				plan += printIndent(level, plan_format) + "</Node>";
 				break;

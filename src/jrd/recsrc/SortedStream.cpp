@@ -112,7 +112,7 @@ bool SortedStream::lockRecord(thread_db* tdbb) const
 	return m_next->lockRecord(tdbb);
 }
 
-void SortedStream::print(thread_db* tdbb, string& plan,
+void SortedStream::print(thread_db* tdbb, jrd_req* request, string& plan,
 						 isc_info_sql_plan_format plan_format, unsigned level) const
 {
 	switch (plan_format)
@@ -121,7 +121,7 @@ void SortedStream::print(thread_db* tdbb, string& plan,
 			{
 				level++;
 				plan += "SORT (";
-				m_next->print(tdbb, plan, plan_format, level);
+				m_next->print(tdbb, request, plan, plan_format, level);
 				plan += ")";		
 				break;
 			}
@@ -135,7 +135,7 @@ void SortedStream::print(thread_db* tdbb, string& plan,
 				plan += printIndent(++level, plan_format) +
 					((m_map->flags & FLAG_PROJECT) ? "Unique Sort" : "Sort") + extras;
 
-				m_next->print(tdbb, plan, plan_format, level);
+				m_next->print(tdbb, request, plan, plan_format, level);
 				break;
 			}
 			
@@ -148,7 +148,7 @@ void SortedStream::print(thread_db* tdbb, string& plan,
 				plan += printIndent(++level, plan_format) +
 					"<Node operation=\"" +  ((m_map->flags & FLAG_PROJECT) ? "Unique Sort" : "Sort") + "\"" + extras + ">";
 
-				m_next->print(tdbb, plan, plan_format, level);
+				m_next->print(tdbb, request, plan, plan_format, level);
 
 				plan += printIndent(level, plan_format) + "</Node>";
 				break;

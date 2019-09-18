@@ -111,7 +111,7 @@ bool FullOuterJoin::lockRecord(thread_db* tdbb) const
 	return false; // compiler silencer
 }
 
-void FullOuterJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
+void FullOuterJoin::print(thread_db* tdbb, jrd_req* request, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
 {
 	switch (plan_format)
 	{
@@ -119,9 +119,9 @@ void FullOuterJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_forma
 			{
 				level++;
 				plan += "JOIN (";
-				m_arg1->print(tdbb, plan, plan_format, level);
+				m_arg1->print(tdbb, request, plan, plan_format, level);
 				plan += ", ";
-				m_arg2->print(tdbb, plan, plan_format, level);
+				m_arg2->print(tdbb, request, plan, plan_format, level);
 				plan += ")";
 				break;
 			}
@@ -129,16 +129,16 @@ void FullOuterJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_forma
 		case isc_info_sql_plan_format_explain_legacy:
 			{
 				plan += printIndent(++level, plan_format) + "Full Outer Join";
-				m_arg1->print(tdbb, plan, plan_format, level);
-				m_arg2->print(tdbb, plan, plan_format, level);
+				m_arg1->print(tdbb, request, plan, plan_format, level);
+				m_arg2->print(tdbb, request, plan, plan_format, level);
 				break;
 			}
 			
 		case isc_info_sql_plan_format_explain_xml:
 			{
 				plan += printIndent(++level, plan_format) + "<Node operation=\"Full Join\" joinType=\"Outer\">";
-				m_arg1->print(tdbb, plan, plan_format, level);
-				m_arg2->print(tdbb, plan, plan_format, level);
+				m_arg1->print(tdbb, request, plan, plan_format, level);
+				m_arg2->print(tdbb, request, plan, plan_format, level);
 				plan += printIndent(level, plan_format) + "</Node>";
 				break;
 			}

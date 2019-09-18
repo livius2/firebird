@@ -244,7 +244,7 @@ bool RecursiveStream::lockRecord(thread_db* /*tdbb*/) const
 	return false; // compiler silencer
 }
 
-void RecursiveStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
+void RecursiveStream::print(thread_db* tdbb, jrd_req* request, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
 {
 	switch (plan_format)
 	{
@@ -253,11 +253,11 @@ void RecursiveStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_for
 				if (!level)
 					plan += "(";
 
-				m_root->print(tdbb, plan, plan_format, level + 1);
+				m_root->print(tdbb, request, plan, plan_format, level + 1);
 
 				plan += ", ";
 
-				m_inner->print(tdbb, plan, plan_format, level + 1);
+				m_inner->print(tdbb, request, plan, plan_format, level + 1);
 
 				if (!level)
 					plan += ")";		
@@ -268,8 +268,8 @@ void RecursiveStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_for
 			{
 				plan += printIndent(++level, plan_format) + "Recursion";
 				
-				m_root->print(tdbb, plan, plan_format, level);
-				m_inner->print(tdbb, plan, plan_format, level);
+				m_root->print(tdbb, request, plan, plan_format, level);
+				m_inner->print(tdbb, request, plan, plan_format, level);
 				break;
 			}
 			
@@ -277,8 +277,8 @@ void RecursiveStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_for
 			{
 				plan += printIndent(++level, plan_format) + "<Node operation=\"Recursion\">";
 				
-				m_root->print(tdbb, plan, plan_format, level);
-				m_inner->print(tdbb, plan, plan_format, level);
+				m_root->print(tdbb, request, plan, plan_format, level);
+				m_inner->print(tdbb, request, plan, plan_format, level);
 
 				plan += printIndent(level, plan_format) + "</Node>";
 				break;

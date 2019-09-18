@@ -1334,11 +1334,11 @@ void Monitoring::dumpAttachment(thread_db* tdbb, Attachment* attachment)
 
 	// Request information
 
-	for (const jrd_req* const* i = attachment->att_requests.begin();
+	for (jrd_req* const* i = attachment->att_requests.begin();
 		 i != attachment->att_requests.end();
 		 ++i)
 	{
-		const jrd_req* const request = *i;
+		jrd_req* request = *i;
 
 		if (!(request->getStatement()->flags &
 				(JrdStatement::FLAG_INTERNAL | JrdStatement::FLAG_SYS_TRIGGER)))

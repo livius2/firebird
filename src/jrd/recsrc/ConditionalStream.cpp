@@ -111,7 +111,7 @@ bool ConditionalStream::lockRecord(thread_db* tdbb) const
 	return impure->irsb_next->lockRecord(tdbb);
 }
 
-void ConditionalStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
+void ConditionalStream::print(thread_db* tdbb, jrd_req* request, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
 {
 	switch (plan_format)
 	{
@@ -120,9 +120,9 @@ void ConditionalStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_f
 				if (!level)
 					plan += "(";
 
-				m_first->print(tdbb, plan, plan_format, level + 1);
+				m_first->print(tdbb, request, plan, plan_format, level + 1);
 				plan += ", ";
-				m_second->print(tdbb, plan, plan_format, level + 1);
+				m_second->print(tdbb, request, plan, plan_format, level + 1);
 
 				if (!level)
 					plan += ")";
@@ -133,8 +133,8 @@ void ConditionalStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_f
 			{
 				plan += printIndent(++level, plan_format) + "Condition";
 				
-				m_first->print(tdbb, plan, plan_format, level);
-				m_second->print(tdbb, plan, plan_format, level);
+				m_first->print(tdbb, request, plan, plan_format, level);
+				m_second->print(tdbb, request, plan, plan_format, level);
 				break;
 			}
 			
@@ -142,8 +142,8 @@ void ConditionalStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_f
 			{
 				plan += printIndent(++level, plan_format) + "<Node operation=\"Condition\">";
 				
-				m_first->print(tdbb, plan, plan_format, level);
-				m_second->print(tdbb, plan, plan_format, level);
+				m_first->print(tdbb, request, plan, plan_format, level);
+				m_second->print(tdbb, request, plan, plan_format, level);
 				
 				plan += printIndent(level, plan_format) + "</Node>";
 				break;

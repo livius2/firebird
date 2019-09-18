@@ -337,7 +337,7 @@ bool MergeJoin::lockRecord(thread_db* /*tdbb*/) const
 	return false; // compiler silencer
 }
 
-void MergeJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
+void MergeJoin::print(thread_db* tdbb, jrd_req* request, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
 {
 	switch (plan_format)
 	{
@@ -350,7 +350,7 @@ void MergeJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format pl
 					if (i)
 						plan += ", ";
 
-					m_args[i]->print(tdbb, plan, plan_format, level);
+					m_args[i]->print(tdbb, request, plan, plan_format, level);
 				}
 				plan += ")";		
 				break;
@@ -361,7 +361,7 @@ void MergeJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format pl
 				plan += printIndent(++level, plan_format) + "Merge Join (inner)";
 
 				for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
-					m_args[i]->print(tdbb, plan, plan_format, level);
+					m_args[i]->print(tdbb, request, plan, plan_format, level);
 				break;
 			}
 			
@@ -370,7 +370,7 @@ void MergeJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format pl
 				plan += printIndent(++level, plan_format) + "<Node operation=\"Merge Join\" joinType=\"Inner\">";
 
 				for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
-					m_args[i]->print(tdbb, plan, plan_format, level);
+					m_args[i]->print(tdbb, request, plan, plan_format, level);
 
 				plan += printIndent(level, plan_format) + "</Node>";
 				break;

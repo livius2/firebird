@@ -64,7 +64,7 @@ namespace Jrd
 		virtual bool refetchRecord(thread_db* tdbb) const = 0;
 		virtual bool lockRecord(thread_db* tdbb) const = 0;
 
-		virtual void print(thread_db* tdbb, Firebird::string& plan,
+		virtual void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 						   isc_info_sql_plan_format plan_format, unsigned level) const = 0;
 
 		virtual void markRecursive() = 0;
@@ -155,7 +155,7 @@ namespace Jrd
 
 		bool getRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 	private:
@@ -179,7 +179,7 @@ namespace Jrd
 
 		bool getRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 	private:
@@ -214,7 +214,7 @@ namespace Jrd
 
 		bool getRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void setInversion(InversionNode* inversion, BoolExprNode* condition)
@@ -261,7 +261,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 	private:
@@ -282,7 +282,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 	protected:
@@ -315,7 +315,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 	private:
@@ -344,7 +344,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -372,7 +372,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -402,7 +402,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -438,7 +438,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -469,7 +469,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -563,7 +563,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -762,7 +762,7 @@ namespace Jrd
 			const NestValueArray* group, MapNode* map, RecordSource* next);
 
 	public:
-		void print(thread_db* tdbb, Firebird::string& plan, isc_info_sql_plan_format plan_format, unsigned level) const;
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan, isc_info_sql_plan_format plan_format, unsigned level) const;
 		bool getRecord(thread_db* tdbb) const;
 	};
 
@@ -827,7 +827,7 @@ namespace Jrd
 
 			bool getRecord(thread_db* tdbb) const;
 
-			void print(thread_db* tdbb, Firebird::string& plan, isc_info_sql_plan_format plan_format, unsigned level) const;
+			void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan, isc_info_sql_plan_format plan_format, unsigned level) const;
 			void findUsedStreams(StreamList& streams, bool expandAll = false) const;
 			void nullRecords(thread_db* tdbb) const;
 
@@ -866,7 +866,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 			isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -926,7 +926,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -966,7 +966,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -995,7 +995,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -1044,7 +1044,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -1104,7 +1104,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -1143,7 +1143,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -1184,7 +1184,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;
@@ -1222,7 +1222,7 @@ namespace Jrd
 		bool refetchRecord(thread_db* tdbb) const override;
 		bool lockRecord(thread_db* tdbb) const override;
 
-		void print(thread_db* tdbb, Firebird::string& plan,
+		void print(thread_db* tdbb, jrd_req* request, Firebird::string& plan,
 				   isc_info_sql_plan_format plan_format, unsigned level) const override;
 
 		void markRecursive() override;

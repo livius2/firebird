@@ -143,7 +143,7 @@ bool SingularStream::lockRecord(thread_db* tdbb) const
 	return m_next->lockRecord(tdbb);
 }
 
-void SingularStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
+void SingularStream::print(thread_db* tdbb, jrd_req* request, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
 {
 	switch (plan_format)
 	{
@@ -162,7 +162,7 @@ void SingularStream::print(thread_db* tdbb, string& plan, isc_info_sql_plan_form
 			fb_assert(false);			
 	}
 
-	m_next->print(tdbb, plan, plan_format, level);
+	m_next->print(tdbb, request, plan, plan_format, level);
 	
 	if (plan_format == isc_info_sql_plan_format_explain_xml)
 		plan += printIndent(level, plan_format) + "</Node>";

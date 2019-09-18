@@ -1222,7 +1222,6 @@ interface TraceSQLStatement : TraceStatement
 	TraceParams getInputs();
 	const string getTextUTF8();
 	const string getExplainedPlan();
-	const string getFormattedPlan();
 	
 version:
 	const string getFormattedPlan();

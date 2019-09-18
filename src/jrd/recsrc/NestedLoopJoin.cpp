@@ -197,7 +197,7 @@ bool NestedLoopJoin::lockRecord(thread_db* /*tdbb*/) const
 	return false; // compiler silencer
 }
 
-void NestedLoopJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
+void NestedLoopJoin::print(thread_db* tdbb, jrd_req* request, string& plan, isc_info_sql_plan_format plan_format, unsigned level) const
 {
 	if (m_args.hasData())
 	{
@@ -212,7 +212,7 @@ void NestedLoopJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_form
 						if (i)
 							plan += ", ";
 
-						m_args[i]->print(tdbb, plan, plan_format, level);
+						m_args[i]->print(tdbb, request, plan, plan_format, level);
 					}
 					plan += ")";
 					break;
@@ -245,7 +245,7 @@ void NestedLoopJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_form
 					}
 
 					for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
-						m_args[i]->print(tdbb, plan, plan_format, level);
+						m_args[i]->print(tdbb, request, plan, plan_format, level);
 					break;
 				}
 				
@@ -277,7 +277,7 @@ void NestedLoopJoin::print(thread_db* tdbb, string& plan, isc_info_sql_plan_form
 					
 					plan += "\">";
 					for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
-						m_args[i]->print(tdbb, plan, plan_format, level);
+						m_args[i]->print(tdbb, request, plan, plan_format, level);
 					plan += printIndent(level, plan_format) + "</Node>";
 					break;
 				}
