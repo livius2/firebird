@@ -126,11 +126,16 @@ void FirstRowsStream::print(thread_db* tdbb, jrd_req* request, string& plan, isc
 			
 		case isc_info_sql_plan_format_explain_xml:
 			{
-				Impure* const impure = request->getImpure<Impure>(m_impure);
 				string extras;
-				const dsc* desc = EVL_expr(tdbb, request, m_value);
-				const SINT64 value = (desc && !(request->req_flags & req_null)) ? MOV_get_int64(tdbb, desc, 0) : 0;
-				extras.printf(" limitRows=\"%" ULONGFORMAT"\"", value);
+
+				if (m_value->type == ExprNode::TYPE_LITERAL)
+				{
+					Impure* const impure = request->getImpure<Impure>(m_impure);
+
+					const dsc* desc = EVL_expr(tdbb, request, m_value);
+					const SINT64 value = (desc && !(request->req_flags & req_null)) ? MOV_get_int64(tdbb, desc, 0) : 0;
+					extras.printf(" limitRows=\"%" ULONGFORMAT"\"", value);
+				}				
 				
 				plan += printIndent(++level, plan_format) + "<Node operation=\"First N Records\"" + extras + ">";
 				break;
