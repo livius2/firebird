@@ -130,8 +130,6 @@ void FirstRowsStream::print(thread_db* tdbb, jrd_req* request, string& plan, isc
 
 				if (m_value->type == ExprNode::TYPE_LITERAL)
 				{
-					Impure* const impure = request->getImpure<Impure>(m_impure);
-
 					const dsc* desc = EVL_expr(tdbb, request, m_value);
 					const SINT64 value = (desc && !(request->req_flags & req_null)) ? MOV_get_int64(tdbb, desc, 0) : 0;
 					extras.printf(" limitRows=\"%" ULONGFORMAT"\"", value);
