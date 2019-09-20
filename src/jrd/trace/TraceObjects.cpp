@@ -216,7 +216,7 @@ void TraceSQLStatementImpl::fillPlan(isc_info_sql_plan_format plan_format)
 	if (m_plan.isEmpty() || m_planExplained != explained)
 	{
 		m_planExplained = explained;
-		m_plan = OPT_get_plan(JRD_get_thread_data(), m_stmt->req_request, plan_format);
+		m_plan = OPT_get_plan(JRD_get_thread_data(), m_stmt->req_request, m_stmt->getStatement(), plan_format);
 	}
 }
 

@@ -85,6 +85,8 @@ namespace Jrd
 			return true;
 		}
 
+		static Firebird::string printIndent(unsigned level, isc_info_sql_plan_format plan_format);
+
 	protected:
 		// Generic impure block
 		struct Impure
@@ -105,8 +107,7 @@ namespace Jrd
 		static Firebird::string printName(thread_db* tdbb, const Firebird::string& name, bool quote = true);
 		static Firebird::string printName(thread_db* tdbb, const Firebird::string& name,
 										  const Firebird::string& alias);
-
-		static Firebird::string printIndent(unsigned level, isc_info_sql_plan_format plan_format);
+		
 		static Firebird::string escapeXml(const Firebird::string s);
 		static void printInversion(thread_db* tdbb, const InversionNode* inversion,
 								   Firebird::string& plan, isc_info_sql_plan_format plan_format,

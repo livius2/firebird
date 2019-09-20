@@ -1343,7 +1343,7 @@ void Monitoring::dumpAttachment(thread_db* tdbb, Attachment* attachment)
 		if (!(request->getStatement()->flags &
 				(JrdStatement::FLAG_INTERNAL | JrdStatement::FLAG_SYS_TRIGGER)))
 		{
-			const string plan = OPT_get_plan(tdbb, request, isc_info_sql_plan_format_explain_legacy); // maybe some config param required for plan format?
+			const string plan = OPT_get_plan(tdbb, request, NULL, isc_info_sql_plan_format_explain_legacy); // maybe some config param required for plan format?
 			putRequest(record, request, plan);
 		}
 	}

@@ -2042,7 +2042,7 @@ static void sql_info(thread_db* tdbb,
 						fb_assert(false);
 				}
 
-				string plan = OPT_get_plan(tdbb, request->req_request, plan_format);
+				string plan = OPT_get_plan(tdbb, request->req_request, request->statement, plan_format);
 
 				if (plan.hasData())
 				{
