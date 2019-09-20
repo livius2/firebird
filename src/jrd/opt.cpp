@@ -743,12 +743,10 @@ void get_plan_statistics(thread_db* tdbb, jrd_req* request, isc_info_sql_plan_fo
 						jrd_rel* relation = MET_relation(tdbb, (*iter).getRelationId());
 
 						plan += RecordSource::printIndent(level + 2, plan_format) + "<Table name=\"" + relation->rel_name.c_str() + "\">";
-						plan += RecordSource::printIndent(level + 3, plan_format) + "<LogicalIO>";
 
 						// logical I/O statistics (global)
-						get_plan_statistics_table_logical_IO(iter, plan_format, plan, level + 4);
+						get_plan_statistics_table_logical_IO(iter, plan_format, plan, level + 3);
 
-						plan += RecordSource::printIndent(level + 3, plan_format) + "</LogicalIO>";
 						plan += RecordSource::printIndent(level + 2, plan_format) + "</Table>";
 					}
 
