@@ -344,7 +344,7 @@ void RecordSource::printInversion(thread_db* tdbb, const InversionNode* inversio
 								if (equality)
 								{
 									if (partial)
-										bounds.printf((printIndent(level, plan_format) + "<Match>Partial: %d/%d</Match>)").c_str(), maxSegs, segCount);
+										bounds.printf((printIndent(level, plan_format) + "<Match>Partial: %d/%d</Match>").c_str(), maxSegs, segCount);
 									else
 										bounds.printf((printIndent(level, plan_format) + "<Match>Full</Match>").c_str());
 								}

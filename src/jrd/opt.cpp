@@ -716,7 +716,7 @@ void get_plan_statistics(thread_db* tdbb, jrd_req* request, isc_info_sql_plan_fo
 			//request->adjustCallerStats();
 			const RuntimeStatistics& statistics = request->req_stats; //used currently only in xml plan then declared here
 
-			if (memory_stats || physical_io || logical_io || logical_io || table_stats)
+			if (memory_stats || physical_io || logical_io || table_stats)
 			{
 				
 				plan += RecordSource::printIndent(level, plan_format) + "<Statistics>";
@@ -742,7 +742,7 @@ void get_plan_statistics(thread_db* tdbb, jrd_req* request, isc_info_sql_plan_fo
 					{
 						jrd_rel* relation = MET_relation(tdbb, (*iter).getRelationId());
 
-						plan += RecordSource::printIndent(level + 2, plan_format) + "<Table name=\"" + relation->rel_name.c_str() + "\">";
+						plan += RecordSource::printIndent(level + 2, plan_format) + "<StatTable name=\"" + relation->rel_name.c_str() + "\">";
 
 						// logical I/O statistics (global)
 						get_plan_statistics_table_logical_IO(iter, plan_format, plan, level + 3);
@@ -795,44 +795,44 @@ string OPT_get_plan(thread_db* tdbb, jrd_req* request, const DsqlCompiledStateme
 				string extras;
 				if (statement)
 				{
-					string queryType;
+					string statementType;
 					switch (statement->getType())
 					{
 					case DsqlCompiledStatement::TYPE_DDL:
-						queryType += "DDL";
+						statementType += "DDL";
 						break;
 
 					case DsqlCompiledStatement::TYPE_DELETE:
-						queryType += "Delete";
+						statementType += "Delete";
 						break;
 
 					case DsqlCompiledStatement::TYPE_EXEC_BLOCK:
-						queryType += "ExecuteBlock";
+						statementType += "ExecuteBlock";
 						break;
 
 					case DsqlCompiledStatement::TYPE_EXEC_PROCEDURE:
-						queryType += "ExecuteProcedure";
+						statementType += "ExecuteProcedure";
 						break;
 
 					case DsqlCompiledStatement::TYPE_INSERT:
-						queryType += "Insert";
+						statementType += "Insert";
 						break;
 
 					case DsqlCompiledStatement::TYPE_SELECT:
-						queryType += "Select";
+						statementType += "Select";
 						break;
 
 					case DsqlCompiledStatement::TYPE_UPDATE:
-						queryType += "Update";
+						statementType += "Update";
 						break;
 					}
 
-					if (queryType != "")
-						extras += " type=\"" + queryType + "\"";
+					if (statementType != "")
+						extras += " statementType=\"" + statementType + "\"";
 				}
 
 				plan += "\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
-				plan += "\n<Statements" + extras + ">";
+				plan += "\n<Statements xmlns=\"https://www.firebirdsql.org/2019/ExecutionPlan\"" + extras + ">";
 
 				//only avaiable when called from Monitoring.cpp
 				if (!statement)
@@ -857,7 +857,7 @@ string OPT_get_plan(thread_db* tdbb, jrd_req* request, const DsqlCompiledStateme
 					break;
 					
 				case isc_info_sql_plan_format_explain_xml:
-					plan += "\n\t<Statement xmlns=\"https://www.firebirdsql.org/2019/ExecutionPlan\">"; 
+					plan += "\n\t<Statement>"; 
 					level = 1;
 					break;
 				
