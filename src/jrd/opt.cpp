@@ -747,7 +747,7 @@ void get_plan_statistics(thread_db* tdbb, jrd_req* request, isc_info_sql_plan_fo
 						// logical I/O statistics (global)
 						get_plan_statistics_table_logical_IO(iter, plan_format, plan, level + 3);
 
-						plan += RecordSource::printIndent(level + 2, plan_format) + "</Table>";
+						plan += RecordSource::printIndent(level + 2, plan_format) + "</StatTable>";
 					}
 
 					plan += RecordSource::printIndent(level + 1, plan_format) + "</TableStats>";
