@@ -59,9 +59,14 @@ public:
 	}
 
 	virtual BoolExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual bool execute(thread_db* tdbb, Request* request) const;
+
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+
+	}
 
 private:
 	virtual bool executeAnd(thread_db* tdbb, Request* request) const;
@@ -117,11 +122,30 @@ public:
 	}
 
 	virtual BoolExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual BoolExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual void pass2Boolean(thread_db* tdbb, CompilerScratch* csb, std::function<void ()> process);
 	virtual bool execute(thread_db* tdbb, Request* request) const;
+
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->arg1)
+		{
+			this->arg1 = this->arg1->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg1);
+		}
+		if (this->arg2)
+		{
+			this->arg2 = this->arg2->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg2);
+		}
+		if (this->arg3)
+		{
+			this->arg3 = this->arg3->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg3);
+		}
+	}
 
 private:
 	bool stringBoolean(thread_db* tdbb, Request* request, dsc* desc1, dsc* desc2,
@@ -225,6 +249,14 @@ public:
 	virtual BoolExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual void pass2Boolean(thread_db* tdbb, CompilerScratch* csb, std::function<void ()> process);
 	virtual bool execute(thread_db* tdbb, Request* request) const;
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->arg)
+		{
+			this->arg = this->arg->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg);
+		}
+	}
 
 public:
 	bool dsqlUnknown;
@@ -252,6 +284,11 @@ public:
 	virtual BoolExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
 	virtual BoolExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual bool execute(thread_db* tdbb, Request* request) const;
+
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		//
+	}
 
 private:
 	BoolExprNode* process(DsqlCompilerScratch* dsqlScratch, bool invert);
@@ -303,11 +340,15 @@ public:
 	}
 
 	virtual BoolExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual BoolExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual void pass2Boolean(thread_db* tdbb, CompilerScratch* csb, std::function<void ()> process);
 	virtual bool execute(thread_db* tdbb, Request* request) const;
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		//
+	}
 
 private:
 	BoolExprNode* convertNeqAllToNotAny(thread_db* tdbb, CompilerScratch* csb);

@@ -179,6 +179,7 @@ using namespace Firebird;
 
 static string pass1_alias_concat(const string&, const string&);
 static ValueListNode* pass1_group_by_list(DsqlCompilerScratch*, ValueListNode*, ValueListNode*);
+static ValueExprNode* pass1_make_rollup_field(thread_db*, DsqlCompilerScratch*, ValueExprNode*, ValueExprNode*, ValueListNode::GroupKind, USHORT, USHORT, USHORT);
 static ValueExprNode* pass1_make_derived_field(thread_db*, DsqlCompilerScratch*, ValueExprNode*);
 static RseNode* pass1_rse(DsqlCompilerScratch*, RecordSourceNode*, ValueListNode*, RowsClause*, bool, bool, USHORT);
 static RseNode* pass1_rse_impl(DsqlCompilerScratch*, RecordSourceNode*, ValueListNode*, RowsClause*, bool, bool, USHORT);
@@ -1438,6 +1439,112 @@ void PASS1_expand_select_node(DsqlCompilerScratch* dsqlScratch, ExprNode* node, 
 	}
 }
 
+/**
+`
+	pass1_make_rollup_field
+
+	@brief	Create expression field for rollup, cube, grouping sets around underlying expressions (frNode)
+
+
+	@param tdbb
+	@param dsqlScratch	
+	@param rollupNode
+	@param frNode
+	@param kind
+	@param groupStartOffset
+	@param fieldNr
+	@param fieldsCountInGroup
+
+ **/
+static ValueExprNode* pass1_make_rollup_field(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch,
+	ValueExprNode* rollupNode, ValueExprNode* frNode, ValueListNode::GroupKind kind, 
+	USHORT groupStartOffset, USHORT fieldNr, USHORT fieldsCountInGroup)
+{
+	MemoryPool& pool = *tdbb->getDefaultPool();
+
+	if (kind == ValueListNode::GROUP_KIND_ROLLUP)
+	{
+		//IIF((R.TYP-0)<=3, G.ID1, NULL)
+		//ValueIfNode<ComparativeBoolNode<blr=blr_leq=52, ArithmeticNode<blrOp=blr_subtract=35, FieldNode, LiteralNode<dsc_dtype=dtype_long=9 value=0>>, LiteralNode<dsc_dtype=dtype_long=9 value=3>>, FieldNode, NullNode>					
+
+		LiteralNode* lNode = FB_NEW_POOL(pool) LiteralNode(pool);
+		SLONG* sl = FB_NEW_POOL(pool) SLONG(0); // we substract 0, but in future will support multiple rollup, so we can substract different position
+		lNode->litDesc.makeLong(0, sl);
+
+		ArithmeticNode* aNode = FB_NEW_POOL(pool) ArithmeticNode(pool, blr_subtract, dsqlScratch->clientDialect == 1, rollupNode, lNode);
+
+		lNode = FB_NEW_POOL(pool) LiteralNode(pool);
+		FB_SIZE_T value = fieldsCountInGroup - fieldNr + groupStartOffset;
+		sl = FB_NEW_POOL(pool) SLONG(value);
+		lNode->litDesc.makeLong(0, sl);
+
+		ComparativeBoolNode* cboolNode = FB_NEW_POOL(pool) ComparativeBoolNode(pool, blr_leq, aNode, lNode);
+
+		ValueIfNode* ifNode = FB_NEW_POOL(pool) ValueIfNode(pool, cboolNode, frNode, NullNode::instance());
+
+		return ifNode;
+	}
+	else if (kind == ValueListNode::GROUP_KIND_CUBE)
+	{
+		//IIF(BIN_AND(R.TYP, 1) < > 0, G.ID1, NULL)
+		//ValueIfNode<ComparativeBoolNode<blr = blr_neq = 48, SysFuncCallNode<name = BIN_AND, args<FieldNode, LiteralNode<dsc_dtype = dtype_long = 9 value = 1>>>, LiteralNode<dsc_dtype = dtype_long = 9 value = 0>>, FieldNode, NullNode>					
+
+		unsigned int count = 0;
+		LiteralNode* lnode = NULL;
+		SLONG* sl = NULL;
+
+		ValueListNode* vlNode = FB_NEW_POOL(pool) ValueListNode(pool, count);
+
+		lnode = FB_NEW_POOL(pool) LiteralNode(pool);
+		UINT64 value = 1ULL << ((fieldNr - 1) + groupStartOffset);
+		sl = FB_NEW_POOL(pool) SLONG(value);
+		lnode->litDesc.makeLong(0, sl);
+
+		//Int128
+		//lnode = FB_NEW_POOL(pool) LiteralNode(pool);
+		//Int128 value = 1;
+		//value <<= (retList->items.getCount() - 1);
+		//Int128* i128 = FB_NEW_POOL(pool) Int128();
+		//i128->set(value);
+		//lnode->litDesc.makeInt128(0, i128);
+
+		vlNode->add(rollupNode);
+		vlNode->add(lnode);
+
+		SysFuncCallNode* sfcNode = FB_NEW_POOL(pool) SysFuncCallNode(pool, "BIN_AND", vlNode);
+		sfcNode->function = SysFunction::lookup("BIN_AND");
+
+		lnode = FB_NEW_POOL(pool) LiteralNode(pool);
+		sl = FB_NEW_POOL(pool) SLONG(0);
+		lnode->litDesc.makeLong(0, sl);
+
+		ComparativeBoolNode* cboolNode = FB_NEW_POOL(pool) ComparativeBoolNode(pool, blr_neq, sfcNode, lnode);
+
+		ValueIfNode* ifNode = FB_NEW_POOL(pool) ValueIfNode(pool, cboolNode, frNode, NullNode::instance());
+
+		return ifNode;
+	}
+	else
+	{
+		return frNode;
+	}
+}
+
+/* remember oryginal index of node in list for future sort */
+struct ExprWithIndex {
+	ValueExprNode* expr;
+	size_t originalIndex;
+};
+
+class CompareExprWithIndex {
+	MemoryPool& pool;
+	bool dsql;
+public:
+	CompareExprWithIndex(MemoryPool& p, bool d) : pool(p), dsql(d) {}
+	bool operator() (const ExprWithIndex& a, const ExprWithIndex& b) {
+		return a.expr->expressionLength(pool, dsql) > b.expr->expressionLength(pool, dsql);
+	}
+};
 
 /**
 
@@ -1469,6 +1576,11 @@ static ValueListNode* pass1_group_by_list(DsqlCompilerScratch* dsqlScratch, Valu
 	}
 
 	ValueListNode* retList = FB_NEW_POOL(pool) ValueListNode(pool, 0u);
+	retList->Kind = input->Kind;
+
+	selectList->Kind = input->Kind;
+
+	ValueExprNode* rollupNode = NULL;
 
 	NestConst<ValueExprNode>* ptr = input->items.begin();
 	for (const NestConst<ValueExprNode>* const end = input->items.end(); ptr != end; ++ptr)
@@ -1510,6 +1622,54 @@ static ValueListNode* pass1_group_by_list(DsqlCompilerScratch* dsqlScratch, Valu
 
 		retList->add(frnode);
 	}
+
+
+	if (retList->Kind != ValueListNode::GROUP_KIND_SIMPLE_OR_NONE)
+	{
+		FB_SIZE_T numExprs = retList->items.getCount();
+
+		// -1 as first is R.RDB$NUMBER
+		std::vector<ExprWithIndex> exprsToSort(numExprs - 1);
+		
+		for (FB_SIZE_T i = 0; i < numExprs - 1; ++i) {
+			exprsToSort[i].expr = retList->items[i + 1];
+			exprsToSort[i].originalIndex = i + 1;
+		}
+
+		//sort expressions by len desc
+		std::sort(exprsToSort.begin(), exprsToSort.end(), CompareExprWithIndex(pool, true));
+
+		//for now there is only one ROLLUP or CUBE allowed, in the future this should check start of rollup or cube group of fields between parentchesis
+		rollupNode = retList->items[0]; //this should be field from additional stream R.TYP
+
+		for (FB_SIZE_T i = 0; i < numExprs - 1; ++i) {
+			auto item = exprsToSort[i];
+
+			auto f = [=](ValueExprNode* nodeToReplace) -> ValueExprNode* {
+				return pass1_make_rollup_field(tdbb, dsqlScratch, rollupNode, nodeToReplace, retList->Kind, 0, item.originalIndex, input->items.getCount());
+			};
+
+			for (FB_SIZE_T i = 0; i < selectList->items.getCount(); i++)
+			{
+				ValueExprNode* node = selectList->items[i];
+
+				selectList->items[i] = node->findAndReplaceExpr(dsqlScratch, item.expr, f);
+			}
+
+			retList->items[item.originalIndex] = pass1_make_rollup_field(tdbb, dsqlScratch, rollupNode, retList->items[item.originalIndex], retList->Kind, 0, item.originalIndex, input->items.getCount());
+		}
+	}
+
+	/*
+	_CoreCrtNonSecureSearchSortCompareFunction compare = [](void const* a, void const* b)  {
+		ExprNode* nodeA = ((ExprNode*)a);
+		ExprNode* nodeB = ((ExprNode*)b);
+
+		return (nodeA->expressionLength(nodeA->getNodePool(), true) - nodeB->expressionLength(nodeB->getNodePool(), true));
+	};
+
+	qsort(itemsLenSort.begin(), itemsLenSort.getCount(), sizeof(ExprNode*), compare);
+	*/
 
 	// Finally make the complete list.
 	return retList;
@@ -1841,6 +2001,34 @@ static RseNode* pass1_rse_impl(DsqlCompilerScratch* dsqlScratch, RecordSourceNod
 	if (skipLocked)
 		rse->flags |= RseNode::FLAG_SKIP_LOCKED;
 
+	if (inputRse->dsqlGroup && (inputRse->dsqlGroup->Kind != ValueListNode::GROUP_KIND_SIMPLE_OR_NONE))
+	{
+		ProcedureSourceNode* psNode = FB_NEW_POOL(pool) ProcedureSourceNode(pool, QualifiedName("NUMBERS", "RDB$RANGES"));
+		psNode->alias = "R"; //C3F6E2D6D85A4CBEB072D7FA98E1CC12		
+		psNode->sourceList = FB_NEW_POOL(pool) ValueListNode(pool, (unsigned) 0);
+
+		//numberFrom
+		LiteralNode* lNode = FB_NEW_POOL(pool) LiteralNode(pool);
+		SLONG* sl = FB_NEW_POOL(pool) SLONG(1);
+		lNode->litDesc.makeLong(0, sl);
+
+		psNode->sourceList->add(lNode);
+
+		//numberTo
+		lNode = FB_NEW_POOL(pool) LiteralNode(pool);
+		FB_SIZE_T additionalGrouping = inputRse->dsqlGroup->items.getCount() + 1;
+
+		if (inputRse->dsqlGroup->Kind == ValueListNode::GROUP_KIND_CUBE)
+			additionalGrouping *= 2;
+
+		sl = FB_NEW_POOL(pool) SLONG(additionalGrouping);
+		lNode->litDesc.makeLong(0, sl);
+
+		psNode->sourceList->add(lNode);
+
+		inputRse->dsqlFrom->add(psNode);
+	}
+
 	rse->dsqlStreams = Node::doDsqlPass(dsqlScratch, inputRse->dsqlFrom, false);
 	RecSourceListNode* streamList = rse->dsqlStreams;
 
@@ -2018,10 +2206,18 @@ static RseNode* pass1_rse_impl(DsqlCompilerScratch* dsqlScratch, RecordSourceNod
 	// Process GROUP BY clause, if any
 	if (inputRse->dsqlGroup)
 	{
-		// if there are positions in the group by clause then replace them
+		if (inputRse->dsqlGroup->Kind != ValueListNode::GROUP_KIND_SIMPLE_OR_NONE)
+		{
+			FieldNode* fNode = FB_NEW_POOL(pool) FieldNode(pool);
+			fNode->dsqlQualifier = "R"; //C3F6E2D6D85A4CBEB072D7FA98E1CC12
+			fNode->dsqlName = "RDB$NUMBER";
+
+			inputRse->dsqlGroup->items.insert(0, fNode);
+		}
+		// if there are positions or aliases in the group by clause then replace them
 		// by the (newly pass) items from the select_list
 		++dsqlScratch->inGroupByClause;
-		aggregate->dsqlGroup = pass1_group_by_list(dsqlScratch, inputRse->dsqlGroup, selectList);
+		aggregate->dsqlGroup = pass1_group_by_list(dsqlScratch, inputRse->dsqlGroup, /*selectList*/ rse->dsqlSelectList);
 		--dsqlScratch->inGroupByClause;
 
 		// AB: An field pointing to another parent_context isn't

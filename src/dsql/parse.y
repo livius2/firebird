@@ -704,10 +704,14 @@ using namespace Firebird;
 %token <metaNamePtr> ANY_VALUE
 %token <metaNamePtr> BTRIM
 %token <metaNamePtr> CALL
+%token <metaNamePtr> CUBE
 %token <metaNamePtr> FORMAT
+%token <metaNamePtr> GROUPING
 %token <metaNamePtr> LTRIM
 %token <metaNamePtr> NAMED_ARG_ASSIGN
+%token <metaNamePtr> ROLLUP
 %token <metaNamePtr> RTRIM
+%token <metaNamePtr> SETS
 
 // precedence declarations for expression evaluation
 
@@ -908,7 +912,7 @@ dml_statement
 	| exec_procedure							{ $$ = $1; }
 	| call										{ $$ = $1; }
 	| exec_block								{ $$ = $1; }
-	| select									{ $$ = $1; }
+	| select									{ $$ = $1; /* S1 */ }
 	| update									{ $$ = $1; }
 	| update_or_insert							{ $$ = $1; }
 	;
@@ -6307,7 +6311,7 @@ select_expr_body
 				node->dsqlClauses = newNode<RecSourceListNode>($1)->add($4);
 			}
 			$$ = node;
-		}
+			/* U1 */
 	| select_expr_body UNION ALL query_term
 		{
 			UnionSourceNode* node = nodeAs<UnionSourceNode>($1);
@@ -6320,7 +6324,7 @@ select_expr_body
 				node->dsqlClauses = newNode<RecSourceListNode>($1)->add($4);
 			}
 			$$ = node;
-		}
+			/* U2 */
 	;
 
 %type <recSourceNode> query_term
@@ -6676,22 +6680,89 @@ outer_noise
 
 %type <valueListNode> group_clause
 group_clause
-	: /* nothing */				{ $$ = NULL; }
-	| GROUP BY group_by_list	{ $$ = $3; }
-	;
+    : GROUP BY grouping_element_list { $$ = $3; /* 1 */ }
+    ;
 
-%type <valueListNode> group_by_list
-group_by_list
-	: group_by_item						{ $$ = newNode<ValueListNode>($1); }
-	| group_by_list ',' group_by_item	{ $$ = $1->add($3); }
-	;
+%type <valueListNode> grouping_element_list
+grouping_element_list
+    : grouping_element { $$ = newNode<ValueListNode>(0U); $$->addList($1); $$->addToGroup($1); /* 2 */ }
+    | grouping_element_list ',' grouping_element { $$ = $1; $1->addList($3); $1->addToGroup($3); /* 3 */ }
+    ;
 
+%type <valueListNode> grouping_element
+grouping_element
+    : ordinary_grouping_set { $$ = $1; /* 4 */ }
+    | rollup_list { $$ = $1; /* 5 */ }
+    | cube_list { $$ = $1; /* 6 */ }
+    | grouping_sets_specification { $$ = $1; /* 7 */ }
+    | empty_grouping_set { $$ = $1; /* 8 */ }
+    ;
+
+%type <valueListNode> ordinary_grouping_set
+ordinary_grouping_set
+    : grouping_column_reference_list { $$ = $1; /* 9 */ }
+    | '(' grouping_column_reference_list ')' { $$ = $2; /* 10 */ }
+    ;
+
+%type <valueExprNode> grouping_column_reference
+grouping_column_reference
+    : group_by_item { $$ = $1; /* 11 */ } 
+														
+    ;
+	
 // Except aggregate-functions are all expressions supported in group_by_item,
 // they are caught inside pass1.cpp
 %type <valueExprNode> group_by_item
 group_by_item
-	: value
+	: value { /* 12 */ } 
 	;
+
+%type <valueListNode> grouping_column_reference_list
+grouping_column_reference_list
+    : grouping_column_reference { $$ = newNode<ValueListNode>($1); /* 13 */ }
+    | grouping_column_reference_list ',' grouping_column_reference { $$ = $1; $1->add($3); /* 14 */ }
+    ;
+
+%type <valueListNode> rollup_list
+rollup_list
+    : ROLLUP '(' ordinary_grouping_set_list ')' { $$ = $3; $3->Kind = ValueListNode::GROUP_KIND_ROLLUP; /* 15 */ }
+    ;
+
+%type <valueListNode> ordinary_grouping_set_list
+ordinary_grouping_set_list
+    : ordinary_grouping_set { $$ = newNode<ValueListNode>(0U); $$->addList($1); $$->addToGroup($1); /* 16 */ }
+    | ordinary_grouping_set_list ',' ordinary_grouping_set { $$ = $1; $1->addList($3); $1->addToGroup($3); /* 17 */ }
+    ;
+
+%type <valueListNode> cube_list
+cube_list
+    : CUBE '(' ordinary_grouping_set_list ')' { $$ = $3; $3->Kind = ValueListNode::GROUP_KIND_CUBE; /* 18 */ }
+    ;
+
+%type <valueListNode> grouping_sets_specification
+grouping_sets_specification
+    : GROUPING SETS '(' grouping_set_list ')' { $$ = $4; $4->Kind = ValueListNode::GROUP_KIND_GROUPING_SETS; /* 19 */ }
+    ;
+
+%type <valueListNode> grouping_set_list
+grouping_set_list
+    : grouping_set { $$ = newNode<ValueListNode>(0U); $$->addList($1); $$->addToGroup($1); /* 20 */ }
+    | grouping_set_list ',' grouping_set { $$ = $1; $1->addList($3); $1->addToGroup($3); /* 21 */ }
+    ;
+
+%type <valueListNode> grouping_set
+grouping_set
+    : ordinary_grouping_set { $$ = $1; /* 22 */ }
+    | rollup_list { $$ = $1; /* 23 */ }
+    | cube_list { $$ = $1; /* 24 */ }
+    | grouping_sets_specification { $$ = $1; /* 25 */ }
+    | empty_grouping_set { $$ = $1; /* 26 */ }
+    ;
+
+%type <valueListNode> empty_grouping_set
+empty_grouping_set
+    : '(' ')' { $$ = newNode<ValueListNode>(0U); /* 27 */ }
+    ;
 
 %type <boolExprNode> having_clause
 having_clause
@@ -7376,9 +7447,9 @@ search_condition
 boolean_value_expression
 	: predicate
 	| value OR value
-		{ $$ = newNode<BinaryBoolNode>(blr_or, valueToBool($1), valueToBool($3)); }
+		{ $$ = newNode<BinaryBoolNode>(blr_or, valueToBool($1), valueToBool($3)); /* value OR value */ }
 	| value AND value
-		{ $$ = newNode<BinaryBoolNode>(blr_and, valueToBool($1), valueToBool($3)); }
+		{ $$ = newNode<BinaryBoolNode>(blr_and, valueToBool($1), valueToBool($3)); /* value AND value */ }
 	| NOT value
 		{ $$ = newNode<NotBoolNode>(valueToBool($2)); }
 	| '(' boolean_value_expression ')'
@@ -7419,7 +7490,7 @@ predicate
 %type <boolExprNode> comparison_predicate
 comparison_predicate
 	: value comparison_operator value %prec '='
-		{ $$ = newNode<ComparativeBoolNode>($2, $1, $3); }
+		{ $$ = newNode<ComparativeBoolNode>($2, $1, $3); /* procent_prec */}
 	;
 
 %type <blrOp> comparison_operator

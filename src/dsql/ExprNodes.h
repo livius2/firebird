@@ -90,7 +90,7 @@ public:
 
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
@@ -100,6 +100,8 @@ public:
 		const UCHAR blrOp);
 	static dsc* add2(thread_db* tdbb, const dsc* desc, impure_value* value, const ValueExprNode* node,
 		const UCHAR blrOp);
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override;
 
 private:
 	dsc* multiply(const dsc* desc, impure_value* value) const;
@@ -168,6 +170,18 @@ public:
 		return NULL;
 	}
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
+
 public:
 	NestConst<FieldNode> field;
 };
@@ -199,6 +213,11 @@ public:
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
 
 public:
 	NestConst<ValueExprNode> dateTimeArg;
@@ -234,6 +253,18 @@ public:
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
+
 public:
 	NestConst<BoolExprNode> boolean;
 };
@@ -268,7 +299,7 @@ public:
 
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual ValueExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
@@ -276,6 +307,23 @@ public:
 
 	static dsc* perform(thread_db* tdbb, impure_value* impure, dsc* value,
 		const dsc* castDesc, const ItemInfo* itemInfo, const Firebird::string& format = nullptr);
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->source)
+		{
+			this->source = this->source->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->source);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	MetaName dsqlAlias;
@@ -328,6 +376,31 @@ public:
 	virtual bool ignoreNulls(const StreamList& /*streams*/) const
 	{
 		return false;
+	}
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->args)
+		{
+			for (FB_SIZE_T i = 0; i < args->items.getCount(); i++)
+			{
+				if (this->args->items[i])
+				{
+					this->args->items[i] = this->args->items[i]->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+					fb_assert(this->args->items[i]);
+				}
+			}
+			
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
 	}
 
 public:
@@ -389,6 +462,11 @@ public:
 		return NULL;
 	}
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
+
 private:
 	static void assignFieldDtypeFromDsc(dsql_fld* field, const dsc* desc);
 
@@ -425,6 +503,29 @@ public:
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->arg1)
+		{
+			this->arg1 = this->arg1->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg1);
+		}
+		if (this->arg2)
+		{
+			this->arg2 = this->arg2->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg2);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
+
 public:
 	NestConst<ValueExprNode> arg1;
 	NestConst<ValueExprNode> arg2;
@@ -450,6 +551,11 @@ public:
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
 };
 
 
@@ -474,6 +580,11 @@ public:
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
 
 public:
 	unsigned precision;
@@ -502,6 +613,11 @@ public:
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
+
 public:
 	unsigned precision;
 };
@@ -527,6 +643,12 @@ public:
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
+};
 };
 
 
@@ -550,6 +672,11 @@ public:
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
 };
 
 
@@ -601,6 +728,49 @@ public:
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->test)
+		{
+			this->test = this->test->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->test);
+		}
+		if (this->conditions)
+		{
+			for (FB_SIZE_T i = 0; i < conditions->items.getCount(); i++)
+			{
+				if (this->conditions->items[i])
+				{
+					this->conditions->items[i] = this->conditions->items[i]->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+					fb_assert(this->conditions->items[i]);
+				}
+			}
+
+		}
+		if (this->values)
+		{
+			for (FB_SIZE_T i = 0; i < values->items.getCount(); i++)
+			{
+				if (this->values->items[i])
+				{
+					this->values->items[i] = this->values->items[i]->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+					fb_assert(this->values->items[i]);
+				}
+			}
+
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
+
+
 public:
 	Firebird::string label;
 	NestConst<ValueExprNode> test;
@@ -626,7 +796,8 @@ public:
 	virtual void genBlr(DsqlCompilerScratch* dsqlScratch);
 	virtual void make(DsqlCompilerScratch* dsqlScratch, dsc* desc);
 
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override;
 
 	virtual ValueExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 
@@ -699,6 +870,24 @@ public:
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->arg)
+		{
+			this->arg = this->arg->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
+
 public:
 	NestConst<ValueExprNode> arg;
 	Firebird::Array<StreamType> internalStreamList;
@@ -729,6 +918,11 @@ public:
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
+
 public:
 	dsc domDesc;
 };
@@ -757,10 +951,28 @@ public:
 
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->arg)
+		{
+			this->arg = this->arg->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	UCHAR blrSubOp;
@@ -791,7 +1003,7 @@ public:
 	virtual void setParameterName(dsql_par* parameter) const;
 	virtual void genBlr(DsqlCompilerScratch* dsqlScratch);
 	virtual void make(DsqlCompilerScratch* dsqlScratch, dsc* desc);
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 
 	void setDsqlDesc(const dsc& desc)
@@ -836,6 +1048,13 @@ public:
 	virtual ValueExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* FieldNode::findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode)
+	{
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+			return replaceNode(this); else
+			return this;
+	}
 
 private:
 	static dsql_fld* resolveContext(DsqlCompilerScratch* dsqlScratch,
@@ -887,11 +1106,29 @@ public:
 
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual ValueExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->arg)
+		{
+			this->arg = this->arg->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	GeneratorItem generator;
@@ -938,6 +1175,11 @@ public:
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
+
 public:
 	NestConst<ValueExprNode> arg;
 };
@@ -965,7 +1207,7 @@ public:
 
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
@@ -985,6 +1227,18 @@ public:
 	void fixMinSInt32(MemoryPool& pool);
 	void fixMinSInt64(MemoryPool& pool);
 	void fixMinSInt128(MemoryPool& pool);
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	const IntlString* dsqlStr = nullptr;
@@ -1039,6 +1293,16 @@ public:
 		return NULL;
 	}
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		this->value = this->value->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+		fb_assert(this->value);
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+			return replaceNode(this); else
+			return this;
+	}
+
 public:
 	const MetaName name;
 	NestConst<ValueExprNode> value;
@@ -1064,7 +1328,8 @@ public:
 	virtual void setParameterName(dsql_par* parameter) const;
 	virtual void genBlr(DsqlCompilerScratch* dsqlScratch);
 	virtual void make(DsqlCompilerScratch* dsqlScratch, dsc* desc);
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override;
 
 	void setDsqlDesc(const dsc& desc)
 	{
@@ -1164,6 +1429,11 @@ public:
 		return NULL;
 	}
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
+
 public:
 	MetaName name;
 	NestConst<ValueExprNode> value;
@@ -1194,6 +1464,11 @@ public:
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
+
 public:
 	unsigned precision;
 };
@@ -1220,6 +1495,11 @@ public:
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
 
 public:
 	unsigned precision;
@@ -1251,6 +1531,24 @@ public:
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->arg)
+		{
+			this->arg = this->arg->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	NestConst<ValueExprNode> arg;
@@ -1290,6 +1588,11 @@ public:
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		return this;
+	}
+
 private:
 	static Firebird::GlobalPtr<NullNode> INSTANCE;
 };
@@ -1315,7 +1618,25 @@ public:
 
 	virtual Firebird::string internalPrint(NodePrinter& printer) const;
 	virtual OrderNode* dsqlPass(DsqlCompilerScratch* dsqlScratch);
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->value)
+		{
+			this->value = this->value->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->value);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	NestConst<ValueExprNode> value;
@@ -1374,7 +1695,7 @@ public:
 			return node;
 		}
 
-		bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const
+		bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override
 		{
 			if (!ListExprNode::dsqlMatch(dsqlScratch, other, ignoreMapCast))
 				return false;
@@ -1395,6 +1716,15 @@ public:
 		virtual Frame* pass1(thread_db* tdbb, CompilerScratch* csb);
 		virtual Frame* pass2(thread_db* tdbb, CompilerScratch* csb);
 		virtual Frame* copy(thread_db* tdbb, NodeCopier& copier) const;
+
+		void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+		{
+			if (this->value)
+			{
+				this->value = this->value->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+				fb_assert(this->value);
+			}
+		}
 
 	public:
 		Bound bound;
@@ -1448,7 +1778,7 @@ public:
 
 		virtual FrameExtent* dsqlPass(DsqlCompilerScratch* dsqlScratch);
 
-		bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const
+		bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override
 		{
 			if (!ListExprNode::dsqlMatch(dsqlScratch, other, ignoreMapCast))
 				return false;
@@ -1469,6 +1799,11 @@ public:
 		virtual FrameExtent* pass1(thread_db* tdbb, CompilerScratch* csb);
 		virtual FrameExtent* pass2(thread_db* tdbb, CompilerScratch* csb);
 		virtual FrameExtent* copy(thread_db* tdbb, NodeCopier& copier) const;
+
+		void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+		{
+			//
+		}
 
 	public:
 		Unit unit;
@@ -1523,7 +1858,7 @@ public:
 
 	virtual WindowClause* dsqlPass(DsqlCompilerScratch* dsqlScratch);
 
-	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override
 	{
 		if (!DsqlNode::dsqlMatch(dsqlScratch, other, ignoreMapCast))
 			return false;
@@ -1550,6 +1885,44 @@ public:
 	{
 		fb_assert(false);
 		return this;
+	}
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->partition)
+		{
+			for (FB_SIZE_T i = 0; i < partition->items.getCount(); i++)
+			{
+				if (this->partition->items[i])
+				{
+					this->partition->items[i] = this->partition->items[i]->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+					fb_assert(this->partition->items[i]);
+				}
+			}
+
+		}
+
+		if (this->order)
+		{
+			for (FB_SIZE_T i = 0; i < order->items.getCount(); i++)
+			{
+				if (this->order->items[i])
+				{
+					this->order->items[i] = this->order->items[i]->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+					fb_assert(this->order->items[i]);
+				}
+			}
+
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
 	}
 
 public:
@@ -1596,6 +1969,30 @@ public:
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->aggExpr)
+		{
+			this->aggExpr = this->aggExpr->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->aggExpr);
+		}
+
+		//is this ok for window?
+		if (this->window)
+		{
+			this->window->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
+
 public:
 	NestConst<ValueExprNode> aggExpr;
 	const MetaName* windowName;
@@ -1640,7 +2037,7 @@ public:
 		std::function<void (dsc*)> makeDesc, bool forceVarChar);
 	virtual void genBlr(DsqlCompilerScratch* dsqlScratch);
 	virtual void make(DsqlCompilerScratch* dsqlScratch, dsc* desc);
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 
 	Request* getParamRequest(Request* request) const;
 
@@ -1654,6 +2051,18 @@ public:
 	virtual ParameterNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual ParameterNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	dsql_msg* dsqlMessage = nullptr;
@@ -1725,7 +2134,7 @@ public:
 
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual ValueExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
@@ -1740,6 +2149,18 @@ public:
 			return RDB_RECORD_VERSION_NAME;
 		}
 		return (rdb ? RDB_DB_KEY_NAME : DB_KEY_NAME);
+	}
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
 	}
 
 private:
@@ -1808,6 +2229,36 @@ public:
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->field)
+		{
+			this->field = this->field->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->field);
+		}
+		if (this->subscripts)
+		{
+			for (FB_SIZE_T i = 0; i < subscripts->items.getCount(); i++)
+			{
+				if (this->subscripts->items[i])
+				{
+					this->subscripts->items[i] = this->subscripts->items[i]->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+					fb_assert(this->subscripts->items[i]);
+				}
+			}
+
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
+
 public:
 	NestConst<ValueExprNode> field;
 	NestConst<ValueListNode> subscripts;
@@ -1867,6 +2318,24 @@ public:
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->expr)
+		{
+			this->expr = this->expr->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->expr);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
+
 public:
 	NestConst<StmtNode> stmt;
 	NestConst<ValueExprNode> expr;
@@ -1896,10 +2365,28 @@ public:
 
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->arg)
+		{
+			this->arg = this->arg->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	const UCHAR blrOp;
@@ -1930,10 +2417,28 @@ public:
 
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->arg)
+		{
+			this->arg = this->arg->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	UCHAR blrSubOp;
@@ -1993,6 +2498,29 @@ public:
 	virtual ValueExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+	
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->value1)
+		{
+			this->value1 = this->value1->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->value1);
+		}
+		if (this->value2)
+		{
+			this->value2 = this->value2->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->value2);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	NestConst<RecordSourceNode> dsqlRse;
@@ -2038,6 +2566,34 @@ public:
 	static dsc* perform(thread_db* tdbb, impure_value* impure, const dsc* valueDsc,
 		const dsc* startDsc, const dsc* lengthDsc);
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->expr)
+		{
+			this->expr = this->expr->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->expr);
+		}
+		if (this->start)
+		{
+			this->start = this->start->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->start);
+		}
+		if (this->length)
+		{
+			this->length = this->length->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->length);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
+
 public:
 	NestConst<ValueExprNode> expr;
 	NestConst<ValueExprNode> start;
@@ -2076,6 +2632,34 @@ public:
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->expr)
+		{
+			this->expr = this->expr->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->expr);
+		}
+		if (this->pattern)
+		{
+			this->pattern = this->pattern->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->pattern);
+		}
+		if (this->escape)
+		{
+			this->escape = this->escape->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->escape);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
+
 public:
 	NestConst<ValueExprNode> expr;
 	NestConst<ValueExprNode> pattern;
@@ -2107,10 +2691,35 @@ public:
 
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->args)
+		{
+			for (FB_SIZE_T i = 0; i < args->items.getCount(); i++)
+			{
+				if (this->args->items[i])
+				{
+					this->args->items[i] = this->args->items[i]->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+					fb_assert(this->args->items[i]);
+				}
+			}
+
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	MetaName name;
@@ -2146,10 +2755,33 @@ public:
 
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->value)
+		{
+			this->value = this->value->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->value);
+		}
+		if (this->trimChars)
+		{
+			this->trimChars = this->trimChars->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->trimChars);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	UCHAR where;
@@ -2201,11 +2833,36 @@ public:
 
 	virtual void getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc);
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual ValueExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->args)
+		{
+			for (FB_SIZE_T i = 0; i < args->items.getCount(); i++)
+			{
+				if (this->args->items[i])
+				{
+					this->args->items[i] = this->args->items[i]->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+					fb_assert(this->args->items[i]);
+				}
+			}
+
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	QualifiedName name;
@@ -2260,6 +2917,31 @@ public:
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
 
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->trueValue)
+		{
+			this->trueValue = this->trueValue->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->trueValue);
+		}
+		if (this->falseValue)
+		{
+			this->falseValue = this->falseValue->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->falseValue);
+		}
+
+		//TODO: what with condition....
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
+
 public:
 	NestConst<BoolExprNode> condition;
 	NestConst<ValueExprNode> trueValue;
@@ -2280,7 +2962,7 @@ public:
 	virtual void setParameterName(dsql_par* parameter) const;
 	virtual void genBlr(DsqlCompilerScratch* dsqlScratch);
 	virtual void make(DsqlCompilerScratch* dsqlScratch, dsc* desc);
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 
 	void setDsqlDesc(const dsc& desc)
 	{
@@ -2299,6 +2981,18 @@ public:
 	virtual ValueExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual ValueExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual dsc* execute(thread_db* tdbb, Request* request) const;
+
+	ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 public:
 	MetaName dsqlName;

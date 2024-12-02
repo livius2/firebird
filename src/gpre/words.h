@@ -339,5 +339,9 @@ enum kwwords_t {
 	KW_WHEN,
 	KW_THEN,
 	KW_SUBSTRING,
+	KW_ROLLUP,
+	KW_CUBE,
+	KW_GROUPING,
+	KW_SETS,
 	KW_max
 };

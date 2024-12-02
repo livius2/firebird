@@ -26,6 +26,7 @@
 #include "../jrd/TimeZone.h"
 #include "../jrd/ProfilerManager.h"
 #include "../jrd/sys-packages/SqlPackage.h"
+#include "../jrd/sys-packages/RangesPackage.h"
 
 using namespace Firebird;
 using namespace Jrd;
@@ -42,6 +43,7 @@ namespace
 			list->add(ProfilerPackage(pool));
 			list->add(BlobUtilPackage(pool));
 			list->add(SqlPackage(pool));
+			list->add(RangesPackage(pool));
 		}
 
 		static InitInstance<SystemPackagesInit> INSTANCE;

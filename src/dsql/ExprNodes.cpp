@@ -1956,6 +1956,31 @@ bool ArithmeticNode::dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode*
 	return dialect1 == o->dialect1 && blrOp == o->blrOp;
 }
 
+ValueExprNode* ArithmeticNode::findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode)
+{
+	
+	if (this->arg1)
+	{
+		this->arg1 = this->arg1->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+		fb_assert(this->arg1);
+	}
+
+	if (this->arg2)
+	{
+		this->arg2 = this->arg2->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+		fb_assert(this->arg2);
+	}
+
+	if (this->dsqlMatch(dsqlScratch, matchNode, true))
+	{
+		return replaceNode(this);
+	}
+	else
+	{
+		return this;
+	}
+}
+
 bool ArithmeticNode::sameAs(const ExprNode* other, bool ignoreStreams) const
 {
 	const ArithmeticNode* const otherNode = nodeAs<ArithmeticNode>(other);
@@ -5212,6 +5237,18 @@ bool DefaultNode::dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* ot
 	fb_assert(o);
 
 	return relationName == o->relationName && fieldName == o->fieldName;
+}
+
+ValueExprNode * DefaultNode::findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode)
+{
+	if (this->dsqlMatch(dsqlScratch, matchNode, true))
+	{
+		return replaceNode(this);
+	}
+	else
+	{
+		return this;
+	}
 }
 
 ValueExprNode* DefaultNode::pass1(thread_db* tdbb, CompilerScratch* csb)
@@ -8634,6 +8671,18 @@ bool DsqlMapNode::dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* ot
 {
 	const DsqlMapNode* o = nodeAs<DsqlMapNode>(other);
 	return o && PASS1_node_match(dsqlScratch, map->map_node, o->map->map_node, ignoreMapCast);
+}
+
+ValueExprNode* DsqlMapNode::findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode)
+{
+	if (this->dsqlMatch(dsqlScratch, matchNode, true))
+	{
+		return replaceNode(this);
+	}
+	else
+	{
+		return this;
+	}
 }
 
 

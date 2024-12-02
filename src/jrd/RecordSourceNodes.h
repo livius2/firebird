@@ -345,6 +345,11 @@ public:
 
 	RecordSource* compile(thread_db* tdbb, Optimizer* opt, bool innerSubStream) override;
 
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+
+	}
+
 public:
 	Firebird::string alias;
 	USHORT tableNumber = 0;
@@ -414,6 +419,11 @@ public:
 	}
 
 	virtual RecordSource* compile(thread_db* tdbb, Optimizer* opt, bool innerSubStream);
+
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+
+	}
 
 public:
 	MetaName dsqlName;
@@ -485,6 +495,35 @@ public:
 	virtual void collectStreams(SortedStreamList& streamList) const;
 
 	virtual RecordSource* compile(thread_db* tdbb, Optimizer* opt, bool innerSubStream);
+
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->sourceList)
+		{
+			for (int i = 0; i < sourceList->items.getCount(); i++)
+			{
+				if (this->sourceList->items[i])
+				{
+					this->sourceList->items[i] = this->sourceList->items[i]->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+					fb_assert(this->sourceList->items[i]);
+				}
+			}
+
+		}
+
+		if (this->targetList)
+		{
+			for (int i = 0; i < targetList->items.getCount(); i++)
+			{
+				if (this->targetList->items[i])
+				{
+					this->targetList->items[i] = this->targetList->items[i]->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+					fb_assert(this->targetList->items[i]);
+				}
+			}
+
+		}
+	}
 
 public:
 	QualifiedName dsqlName;
@@ -568,6 +607,22 @@ public:
 
 	virtual RecordSource* compile(thread_db* tdbb, Optimizer* opt, bool innerSubStream);
 
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		if (this->dsqlGroup)
+		{
+			for (int i = 0; i < dsqlGroup->items.getCount(); i++)
+			{
+				if (this->dsqlGroup->items[i])
+				{
+					this->dsqlGroup->items[i] = this->dsqlGroup->items[i]->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+					fb_assert(this->dsqlGroup->items[i]);
+				}
+			}
+
+		}
+	}
+
 private:
 	void genMap(DsqlCompilerScratch* dsqlScratch, UCHAR blrVerb, dsql_map* map);
 
@@ -630,6 +685,11 @@ public:
 		StreamType currentStream, SortedStreamList* streamList);
 
 	virtual RecordSource* compile(thread_db* tdbb, Optimizer* opt, bool innerSubStream);
+
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+
+	}
 
 public:
 	RecSourceListNode* dsqlClauses;
@@ -707,6 +767,11 @@ public:
 	virtual void findDependentFromStreams(const CompilerScratch* csb,
 		StreamType currentStream, SortedStreamList* streamList);
 	virtual RecordSource* compile(thread_db* tdbb, Optimizer* opt, bool innerSubStream);
+
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+
+	}
 
 private:
 	NestConst<RseNode> rse;
@@ -828,7 +893,7 @@ public:
 	virtual bool dsqlFieldFinder(FieldFinder& visitor);
 	virtual RseNode* dsqlFieldRemapper(FieldRemapper& visitor);
 
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual RseNode* dsqlPass(DsqlCompilerScratch* dsqlScratch);
 
 	virtual RseNode* copy(thread_db* tdbb, NodeCopier& copier) const;
@@ -854,7 +919,12 @@ public:
 
 	virtual RecordSource* compile(thread_db* tdbb, Optimizer* opt, bool innerSubStream);
 
-private:
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+
+	}
+
+private
 	void planCheck(const CompilerScratch* csb) const;
 	static void planSet(CompilerScratch* csb, PlanNode* plan);
 
@@ -952,6 +1022,11 @@ public:
 	{
 		fb_assert(false);
 		return NULL;
+	}
+
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+
 	}
 
 public:

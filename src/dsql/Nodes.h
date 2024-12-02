@@ -68,7 +68,7 @@ typedef Firebird::HalfStaticArray<StreamType, OPT_STATIC_STREAMS> StreamList;
 typedef Firebird::SortedArray<StreamType> SortedStreamList;
 
 typedef Firebird::Array<NestConst<ValueExprNode> > NestValueArray;
-
+typedef Firebird::Array<NestConst<ValueListNode> > NestValueListArray;
 
 class Printable
 {
@@ -447,6 +447,8 @@ public:
 	Firebird::HalfStaticArray<ExprNode**, 8> refs;
 };
 
+typedef std::function<ValueExprNode*(ValueExprNode*)> ReplaceNodeFunc;
+typedef std::function<ExprNode*(ExprNode*)> ReplaceENodeFunc;
 
 class ExprNode : public DmlNode
 {
@@ -720,6 +722,26 @@ public:
 	virtual ExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
 	virtual ExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 	virtual ExprNode* copy(thread_db* tdbb, NodeCopier& copier) const = 0;
+	virtual void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) = 0;
+
+	int expressionLength(MemoryPool& pool, bool dsql)
+	{
+		NodeRefsHolder holder(pool);		
+		int empty = 0;
+
+		getChildren(holder, dsql);
+
+		for (unsigned int i = 0; i < holder.refs.getCount(); i++)
+		{
+			auto node = holder.refs[i];
+			if (*node)
+				(*node)->getChildren(holder, dsql);
+			else 
+				empty++;
+		}
+
+		return holder.refs.getCount() - empty;
+	}
 
 public:
 	ULONG impureOffset;
@@ -848,6 +870,11 @@ public:
 	virtual ValueExprNode* copy(thread_db* tdbb, NodeCopier& copier) const = 0;
 	virtual dsc* execute(thread_db* tdbb, Request* request) const = 0;
 
+	virtual ValueExprNode* findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) = 0;
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		//
+	}
 public:
 	SCHAR nodScale = 0;
 
@@ -1032,7 +1059,7 @@ public:
 	virtual bool dsqlSubSelectFinder(SubSelectFinder& visitor);
 	virtual ValueExprNode* dsqlFieldRemapper(FieldRemapper& visitor);
 
-	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
+	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const override;
 	virtual void setParameterName(dsql_par* parameter) const;
 	virtual void genBlr(DsqlCompilerScratch* dsqlScratch);
 
@@ -1081,6 +1108,24 @@ public:
 	virtual dsc* aggExecute(thread_db* tdbb, Request* request) const = 0;
 
 	virtual AggNode* dsqlPass(DsqlCompilerScratch* dsqlScratch);
+
+	ValueExprNode* AggNode::findAndReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode)
+	{
+		if (this->arg)
+		{
+			this->arg = this->arg->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+			fb_assert(this->arg);
+		}
+
+		if (this->dsqlMatch(dsqlScratch, matchNode, true))
+		{
+			return replaceNode(this);
+		}
+		else
+		{
+			return this;
+		}
+	}
 
 protected:
 	virtual void parseArgs(thread_db* /*tdbb*/, CompilerScratch* /*csb*/, unsigned count)
@@ -1256,9 +1301,18 @@ public:
 class ValueListNode : public TypedNode<ListExprNode, ExprNode::TYPE_VALUE_LIST>
 {
 public:
+	enum GroupKind
+	{
+		GROUP_KIND_SIMPLE_OR_NONE,
+		GROUP_KIND_ROLLUP,
+		GROUP_KIND_CUBE,
+		GROUP_KIND_GROUPING_SETS
+	};
+
 	ValueListNode(MemoryPool& pool, unsigned count)
 		: TypedNode<ListExprNode, ExprNode::TYPE_VALUE_LIST>(pool),
-		  items(pool, INITIAL_CAPACITY)
+		  items(pool, INITIAL_CAPACITY),
+		  groupItems(pool, 0U)
 	{
 		items.resize(count);
 
@@ -1268,14 +1322,16 @@ public:
 
 	ValueListNode(MemoryPool& pool, ValueExprNode* arg1)
 		: TypedNode<ListExprNode, ExprNode::TYPE_VALUE_LIST>(pool),
-		  items(pool, INITIAL_CAPACITY)
+		  items(pool, INITIAL_CAPACITY),
+		  groupItems(pool, 0U)
 	{
 		items.push(arg1);
 	}
 
 	ValueListNode(MemoryPool& pool)
 		: TypedNode<ListExprNode, ExprNode::TYPE_VALUE_LIST>(pool),
-		  items(pool, INITIAL_CAPACITY)
+		  items(pool, INITIAL_CAPACITY),
+		  groupItems(pool, 0U)
 	{
 	}
 
@@ -1290,6 +1346,20 @@ public:
 	ValueListNode* add(ValueExprNode* argn)
 	{
 		items.add(argn);
+		return this;
+	}
+
+	ValueListNode* addList(ValueListNode* argn)
+	{
+		for (auto& item : argn->items )
+			items.add(item);
+
+		return this;
+	}
+
+	ValueListNode* addToGroup(ValueListNode* argn)
+	{
+		groupItems.add(argn);
 		return this;
 	}
 
@@ -1356,8 +1426,23 @@ public:
 		return node;
 	}
 
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+		for (int i = 0; i < items.getCount(); i++)
+		{
+			if (items[i])
+			{
+				items[i] = items[i]->findAndReplaceExpr(dsqlScratch, matchNode, replaceNode);
+				fb_assert(items[i]);
+			}
+		}
+
+	}
+
 public:
 	NestValueArray items;
+	NestValueListArray groupItems;
+	GroupKind Kind = GROUP_KIND_SIMPLE_OR_NONE;
 
 private:
 	static const unsigned INITIAL_CAPACITY = 4;
@@ -1410,6 +1495,11 @@ public:
 	{
 		fb_assert(false);
 		return NULL;
+	}
+
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+
 	}
 
 public:

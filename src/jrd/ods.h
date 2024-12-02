@@ -155,6 +155,7 @@ inline constexpr USHORT ODS_12_0	= ENCODE_ODS(ODS_VERSION12, 0);
 inline constexpr USHORT ODS_13_0	= ENCODE_ODS(ODS_VERSION13, 0);
 inline constexpr USHORT ODS_13_1	= ENCODE_ODS(ODS_VERSION13, 1);
 inline constexpr USHORT ODS_14_0	= ENCODE_ODS(ODS_VERSION14, 0);
+inline constexpr USHORT ODS_14_1	= ODS_14_0;	//// FIXME: ods version
 
 inline constexpr USHORT ODS_FIREBIRD_FLAG = 0x8000;
 
