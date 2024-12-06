@@ -649,7 +649,6 @@ public:
 		return this;
 	}
 };
-};
 
 
 class CurrentUserNode final : public TypedNode<ValueExprNode, ExprNode::TYPE_CURRENT_USER>

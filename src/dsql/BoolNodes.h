@@ -210,6 +210,11 @@ public:
 	BoolExprNode* pass1(thread_db* tdbb, CompilerScratch* csb) override;
 	void pass2Boolean(thread_db* tdbb, CompilerScratch* csb, std::function<void ()> process) override;
 	bool execute(thread_db* tdbb, Request* request) const override;
+	
+	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
+	{
+
+	}
 
 public:
 	NestConst<ValueExprNode> arg;

@@ -79,7 +79,7 @@ RangesPackage::RangesPackage(MemoryPool& pool)
 	: SystemPackage(
 		pool,
 		"RDB$RANGES",
-		ODS_13_2,
+		ODS_14_1,
 		// procedures
 		{
 			SystemProcedure(

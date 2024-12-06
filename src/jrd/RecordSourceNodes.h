@@ -498,7 +498,7 @@ public:
 
 	void ReplaceExpr(DsqlCompilerScratch* dsqlScratch, ValueExprNode* matchNode, ReplaceNodeFunc replaceNode) override
 	{
-		if (this->sourceList)
+		/*if (this->sourceList)
 		{
 			for (int i = 0; i < sourceList->items.getCount(); i++)
 			{
@@ -522,9 +522,9 @@ public:
 				}
 			}
 
-		}
+		}*/
 	}
-
+	
 public:
 	QualifiedName dsqlName;
 	Firebird::string alias;
@@ -924,7 +924,7 @@ public:
 
 	}
 
-private
+private:
 	void planCheck(const CompilerScratch* csb) const;
 	static void planSet(CompilerScratch* csb, PlanNode* plan);
 

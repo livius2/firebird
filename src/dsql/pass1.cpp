@@ -2005,14 +2005,14 @@ static RseNode* pass1_rse_impl(DsqlCompilerScratch* dsqlScratch, RecordSourceNod
 	{
 		ProcedureSourceNode* psNode = FB_NEW_POOL(pool) ProcedureSourceNode(pool, QualifiedName("NUMBERS", "RDB$RANGES"));
 		psNode->alias = "R"; //C3F6E2D6D85A4CBEB072D7FA98E1CC12		
-		psNode->sourceList = FB_NEW_POOL(pool) ValueListNode(pool, (unsigned) 0);
+		psNode->inputSources = FB_NEW_POOL(pool) ValueListNode(pool, (unsigned) 0);
 
 		//numberFrom
 		LiteralNode* lNode = FB_NEW_POOL(pool) LiteralNode(pool);
 		SLONG* sl = FB_NEW_POOL(pool) SLONG(1);
 		lNode->litDesc.makeLong(0, sl);
 
-		psNode->sourceList->add(lNode);
+		psNode->inputSources->add(lNode);
 
 		//numberTo
 		lNode = FB_NEW_POOL(pool) LiteralNode(pool);
@@ -2024,7 +2024,7 @@ static RseNode* pass1_rse_impl(DsqlCompilerScratch* dsqlScratch, RecordSourceNod
 		sl = FB_NEW_POOL(pool) SLONG(additionalGrouping);
 		lNode->litDesc.makeLong(0, sl);
 
-		psNode->sourceList->add(lNode);
+		psNode->inputSources->add(lNode);
 
 		inputRse->dsqlFrom->add(psNode);
 	}

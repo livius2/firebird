@@ -6312,6 +6312,7 @@ select_expr_body
 			}
 			$$ = node;
 			/* U1 */
+		}
 	| select_expr_body UNION ALL query_term
 		{
 			UnionSourceNode* node = nodeAs<UnionSourceNode>($1);
@@ -6325,6 +6326,7 @@ select_expr_body
 			}
 			$$ = node;
 			/* U2 */
+		}
 	;
 
 %type <recSourceNode> query_term

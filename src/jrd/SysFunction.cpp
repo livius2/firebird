@@ -4711,7 +4711,7 @@ dsc* evlGetContext(thread_db* tdbb, const SysFunction*, const NestValueArray& ar
 			resultStr = role.c_str();
 		}
 		else if (nameStr == SERVER_PID_NAME)
-			resultStr.printf("%d", getpid());
+			resultStr.printf("%d", 0); //Karol fixme getpid());
 		else if (nameStr == SESSION_IDLE_TIMEOUT)
 			resultStr.printf("%" ULONGFORMAT, attachment->getIdleTimeout());
 		else if (nameStr == STATEMENT_TIMEOUT)
