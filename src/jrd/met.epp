@@ -2820,6 +2820,8 @@ ScanResult jrd_prc::scan(thread_db* tdbb, ObjectBase::Flag flags)
 			prc_type = P.RDB$PROCEDURE_TYPE.NULL ?
 				prc_legacy : (prc_t) P.RDB$PROCEDURE_TYPE;
 
+			flPrivate = !P.RDB$PRIVATE_FLAG.NULL && P.RDB$PRIVATE_FLAG != 0;
+
 			if (external || !P.RDB$PROCEDURE_BLR.NULL)
 			{
 				MemoryPool* const csb_pool = dbb->createPool();
@@ -3435,6 +3437,7 @@ ScanResult jrd_rel::scan(thread_db* tdbb, ObjectBase::Flag& flags)
 			case RSR_field_not_null:
 				field->fld_not_null = PAR_validation_blr(tdbb, &getName().schema, rel_perm, p, length,
 					csb, NULL, csb_validation);
+				field->fld_flags |= FLD_not_null;
 				break;
 
 			case RSR_security_class:
