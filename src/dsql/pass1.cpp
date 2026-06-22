@@ -4210,7 +4210,6 @@ RecordSourceNode* PASS1_relation(DsqlCompilerScratch* dsqlScratch, RecordSourceN
 			tableValueFunctionNode->dsqlContext = context;
 			return tableValueFunctionNode;
 	}
-	//// TODO: LocalTableSourceNode
 
 	fb_assert(false);
 	return NULL;
